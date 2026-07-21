@@ -441,15 +441,19 @@ Tất cả API trong hệ thống đều tuân thủ cấu trúc JSON đồng nh
 
 ---
 
-## 7. PHÂN CHIA CÔNG VIỆC THÀNH VIÊN (TASK ALLOCATION)
+## 7. PHÂN CHIA CÔNG VIỆC THEO CHỨC NĂNG (TASK ALLOCATION BY FEATURE MODULES)
 
-| Thành viên | Trách nhiệm chính (Modules & Technical Tasks) |
-| :--- | :--- |
-| **Member A** | • Lead thiết kế Cơ sở dữ liệu (ERD) & Entity Models.<br>• Triển khai Module **Auth API** (JWT Login, Token Filter).<br>• Triển khai Module **Client API** (CRUD Clients, gán Manager). |
-| **Member B** | • Triển khai Module **Instance API** (Tạo, Xem chi tiết, Phân trang, Lọc, Sắp xếp).<br>• Xây dựng Logic Validate Ràng buộc Xóa Instance. |
-| **Member C** | • Triển khai API Cập nhật Trạng thái Instance (`PATCH /api/instances/{id}/status`).<br>• Triển khai Module **Monitoring API** (Warnings, Errors, Long-stopped, Summary Report). |
-| **Member D** | • Triển khai Module **Alert API** (Lịch sử cảnh báo, Resolve Alert).<br>• Xây dựng Business Logic cho **Cost Forecast** & **Tính toán SLA**. |
-| **Member E** | • Triển khai **LLM Feature** (`/api/instances/{id}/diagnosis`).<br>• Cấu hình **Swagger/OpenAPI Documentation**.<br>• Quản lý Git Repository (Review PR, Merge code, Kiểm tra Conflicts) & Lead Slide PPT. |
+> **Ghi chú phân công tài liệu & demo:** 
+> - **Tài liệu Đặc tả Kỹ thuật (Specification):** Trưởng nhóm chịu trách nhiệm biên soạn chính và tổng hợp.
+> - **Slide PPT & Báo cáo:** Cả nhóm cùng tham gia làm (mỗi thành viên phụ trách trình bày nội dung cho mô-đun chức năng mình đảm nhận, Member E chịu trách nhiệm tổng hợp slide PPT và kịch bản Demo).
+
+| Thành viên | Mô-đun Chức năng Đảm nhận | Chi tiết Công việc & Các API Phụ trách |
+| :--- | :--- | :--- |
+| **Member A** | **Chức năng 1: Xác thực & Phân quyền (Auth & Security)** | • **DB Lead:** Thiết kế bảng `members` & sơ đồ ERD tổng thể.<br>• **Xác thực:** Triển khai API `POST /api/auth/login` (JWT Token generation & verification).<br>• **Bảo mật:** Triển khai JWT Authentication Filter & Phân quyền Role-Based Access Control (`ADMIN`, `CLIENT_MANAGER`).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần ERD & Security. |
+| **Member B** | **Chức năng 2: Quản lý Khách hàng (Client Management)** | • **Quản lý dữ liệu Client:** Triển khai API Tạo mới (`POST /api/clients`), Xem danh sách với Phân trang, Tìm kiếm & Lọc (`GET /api/clients`).<br>• **Quản lý quan hệ:** Triển khai API Lấy danh sách instance thuộc client (`GET /api/clients/{id}/instances`).<br>• **Phân quyền:** Cấu hình logic giới hạn dữ liệu theo `managerId`.<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Client Management. |
+| **Member C** | **Chức năng 3: Quản lý Máy chủ ảo (Instance Management)** | • **CRUD Instance:** Triển khai API Tạo mới (`POST /api/instances`), Danh sách (`GET /api/instances`), Chi tiết (`GET /api/instances/{id}`).<br>• **Điều khiển & Validate:** Triển khai Cập nhật trạng thái/CPU (`PATCH /api/instances/{id}/status`) và Xóa instance (`DELETE /api/instances/{id}`).<br>• **Business Rule:** Logic chặn xóa instance đang `RUNNING` (HTTP 400).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Instance Management. |
+| **Member D** | **Chức năng 4: Giám sát Hạ tầng & Quản lý Cảnh báo (Monitoring & Alert System)** | • **Giám sát tự động:** Triển khai Monitoring API (`GET /api/monitor/warnings`, `/errors`, `/long-stopped`, `/report`).<br>• **Quản lý Cảnh báo:** Triển khai Alert API (`GET /api/alerts`, `PATCH /api/alerts/{id}/resolve`).<br>• **Business Rule:** Logic tự động phát sinh Alert (`HIGH_CPU`, `SYSTEM_ERROR`) & Logic chống trùng lặp Alert (Alert Deduplication Check).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Monitoring & Alerts. |
+| **Member E** | **Chức năng 5: Phân tích Chi phí, SLA & Chẩn đoán AI (Cost, SLA & LLM Feature)** | • **Phân tích Tài chính & Dịch vụ:** Triển khai API `GET /api/clients/{id}/cost`, Dự báo chi phí (`cost-forecast`) và Tính tỷ lệ `SLA`.<br>• **AI Integration:** Triển khai Chẩn đoán sự cố tự động bằng LLM (`GET /api/instances/{id}/diagnosis`).<br>• **Hệ thống & Demo:** Cấu hình Swagger/OpenAPI UI, Quản lý Git Repository (Merge/PR) và Tổng hợp Slide PPT & Kịch bản Demo. |
 
 ---
 

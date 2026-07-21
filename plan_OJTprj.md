@@ -72,32 +72,33 @@ Xây dựng Cloud Instance Monitoring System REST API cho TechValley, tập trun
 - SLA tính theo tỷ lệ thời gian `RUNNING` so với tổng giờ trong tháng.
 - `RUNNING` không được xóa; `STOPPED` và `ERROR` được xóa.
 
-## 6. Phân chia công việc đề xuất
-### Member A
-- Lead ERD.
-- Auth API.
-- Client API.
+## 6. Phân chia công việc theo từng mô-đun chức năng (Feature Allocation)
+### Member A - Chức năng 1: Xác thực & Phân quyền (Auth & Security)
+- Lead thiết kế Database & Sơ đồ ERD.
+- Module Auth API: `POST /api/auth/login`.
+- JWT Token Filter & Cơ chế Phân quyền Role-Based Access Control (RBAC).
 
-### Member B
-- Instance register/retrieve/delete.
-- Filter, pagination, sort.
+### Member B - Chức năng 2: Quản lý Khách hàng (Client Management)
+- Module Client API: `POST /api/clients`, `GET /api/clients` (Phân trang, Lọc, Search).
+- API Quan hệ Client-Instance: `GET /api/clients/{id}/instances`.
+- Phân quyền giới hạn dữ liệu theo `managerId`.
 
-### Member C
-- Status change API.
-- Monitoring API.
+### Member C - Chức năng 3: Quản lý Máy chủ ảo (Instance Management)
+- Module Instance CRUD & Query: `POST /api/instances`, `GET /api/instances`, `GET /api/instances/{id}`.
+- Module Instance Control: `PATCH /api/instances/{id}/status`, `DELETE /api/instances/{id}`.
+- Validation Business Rule: Chặn xóa instance đang `RUNNING`.
 
-### Member D
-- Alert API.
-- Cost forecast.
-- SLA calculation.
+### Member D - Chức năng 4: Giám sát Hạ tầng & Cảnh báo (Monitoring & Alert System)
+- Module Monitoring API: `GET /api/monitor/warnings`, `/errors`, `/long-stopped`, `/report`.
+- Module Alert API: `GET /api/alerts`, `PATCH /api/alerts/{id}/resolve`.
+- Logic tự động tạo Alert & Chống trùng lặp Alert (Alert Deduplication Check).
 
-### Member E
-- LLM feature.
-- Swagger.
-- Git management.
-- PPT lead.
+### Member E - Chức năng 5: Phân tích Chi phí, SLA & AI (Cost, SLA & LLM Feature)
+- Module Cost & SLA: `GET /api/clients/{id}/cost`, `cost-forecast`, `sla`.
+- Module AI Integration: `GET /api/instances/{id}/diagnosis` (LLM Feature).
+- Swagger Documentation, Git Management (Review PR/Merge), Lead tổng hợp PPT & Demo.
 
-## 7. Kế hoạch thực hiện theo thời gian
+---
 ### Giai đoạn 1: Thống nhất thiết kế
 - Chốt ERD.
 - Chốt luồng auth và role.
