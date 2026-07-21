@@ -12,19 +12,19 @@ Xây dựng Cloud Instance Monitoring System REST API cho TechValley, tập trun
 - Report API: báo cáo tổng quan, cost forecast, SLA.
 - LLM API: chọn 1 chức năng hỗ trợ tự động.
 
-## 3. Thiết kế dữ liệu
-### Bảng chính
+## 3. Thiết kế dữ liệu (MongoDB Collections)
+### Collections chính
 - `members`: thông tin tài khoản, role, createdAt.
 - `clients`: thông tin khách hàng, contractPlan, managerId.
 - `instances`: thông tin instance, region, type, status, cpuUsage, monthlyCost.
-- `alerts`: lưu cảnh báo, loại cảnh báo, trạng thái xử lý.
+- `alerts`: lưu cảnh báo, loại cảnh báo, trạng thái xử lý (`isResolved`).
 - `cost_snapshots`: lưu tổng chi phí theo tháng cho từng client.
 
-### Lưu ý thiết kế
-- `clients.managerId` tham chiếu `members.id`.
-- `instances.clientId` tham chiếu `clients.id`.
-- `alerts.instanceId` tham chiếu `instances.id`.
-- Cần mô tả rõ PK/FK trên ERD để giải thích được quan hệ.
+### Lưu ý thiết kế MongoDB
+- `clients.managerId` tham chiếu tới `members._id` (ObjectId).
+- `instances.clientId` tham chiếu tới `clients._id` (ObjectId).
+- `alerts.instanceId` tham chiếu tới `instances._id` (ObjectId).
+- Cần mô tả rõ cấu trúc Document & liên kết ObjectId trên MongoDB Compass để giải thích được quan hệ.
 
 ## 4. API cần triển khai
 ### Auth
@@ -100,13 +100,13 @@ Xây dựng Cloud Instance Monitoring System REST API cho TechValley, tập trun
 
 ---
 ### Giai đoạn 1: Thống nhất thiết kế
-- Chốt ERD.
+- Chốt MongoDB Collections & Schema.
 - Chốt luồng auth và role.
 - Chốt format response chung.
 - Chốt Git flow.
 
 ### Giai đoạn 2: Coding
-- Làm entity, repository, service, controller.
+- Làm entity/document, repository, service, controller.
 - Viết logic monitoring, alert, cost, SLA.
 - Bổ sung validation và exception handling.
 
@@ -122,7 +122,7 @@ Xây dựng Cloud Instance Monitoring System REST API cho TechValley, tập trun
 
 ### Giai đoạn 5: Làm PPT
 - Viết nội dung problem definition.
-- Trình bày ERD và API.
+- Trình bày MongoDB Schema và API.
 - Giải thích business logic.
 - Chuẩn bị phần Q&A.
 
@@ -142,7 +142,7 @@ Xây dựng Cloud Instance Monitoring System REST API cho TechValley, tập trun
 - Demo API hoạt động đúng logic.
 
 ## 10. Checklist trước khi nộp
-- [ ] ERD có quan hệ rõ ràng.
+- [ ] MongoDB Schema & Document relationships có cấu trúc rõ ràng.
 - [ ] Auth hoạt động với JWT.
 - [ ] Role-based access control đúng.
 - [ ] Monitoring tự tạo alert đúng.

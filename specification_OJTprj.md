@@ -13,8 +13,8 @@ Hệ thống **Cloud Instance Monitoring System** của TechValley được xây
   - *Giải đáp kiến trúc:* **KHÔNG** cần tách thành 2 bản app riêng biệt (Server riêng / Client riêng). Tất cả người dùng (`ADMIN` lẫn `CLIENT_MANAGER`) đều kết nối chung tới **1 REST API Backend Server duy nhất**. Sự phân biệt quyền hạn và truy cập dữ liệu được xử lý tập trung ở tầng Backend qua **JWT Token & Role-Based Access Control (RBAC)**.
 - **Kiến trúc hệ thống:** RESTful Web API (Layered Architecture: Controller - Service - Repository - Entity).
 - **Xác thực & Phân quyền:** JSON Web Token (JWT) Stateless Authentication + Role-Based Access Control (RBAC).
-- **Cơ sở dữ liệu & Công cụ:** **Microsoft SQL Server (MS SQL Server)**.
-  - *Công cụ quản trị:* **SQL Server Management Studio (SSMS)** được sử dụng làm GUI tool chính để thiết kế Schema, xem sơ đồ quan hệ ERD (Database Diagram), quản lý chỉ mục và truy vấn T-SQL.
+- **Cơ sở dữ liệu & Công cụ:** **MongoDB (NoSQL Document Database)**.
+  - *Công cụ quản trị:* **MongoDB Compass** được sử dụng làm GUI tool chính để trực quan hóa Collections, kiểm tra cấu trúc Document, quản lý chỉ mục (Indexes) và thực thi truy vấn Aggregation Pipeline.
 - **Tài liệu API:** OpenAPI 3.0 / Swagger Documentation.
 - **Tích hợp LLM:** OpenAI API / Anthropic Claude API / Gemini API wrapper service.
 
@@ -38,75 +38,75 @@ Hệ thống định nghĩa 2 vai trò chính với các mức truy cập dữ l
 
 ---
 
-## 3. THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE SCHEMA SPECIFICATION FOR MS SQL SERVER / SSMS)
+## 3. THIẾT KẾ CƠ SỞ DỮ LIỆU (MONGODB COLLECTIONS SPECIFICATION / MONGO COMPASS)
 
-> **Ghi chú SSMS:** Toàn bộ bảng, chỉ mục (Index) và quan hệ khóa ngoại (Foreign Keys) dưới đây được quản lý và trực quan hóa trực tiếp trên **SQL Server Management Studio (SSMS)** qua tính năng *Database Diagrams*.
+> **Ghi chú MongoDB Compass:** Toàn bộ Collections, chỉ mục (Index) và mô hình liên kết Document (Reference bằng ObjectId) dưới đây được quản lý và trực quan hóa trực tiếp trên **MongoDB Compass** qua giao diện Collections & Documents view.
 
-### 3.1. Bảng `members` (Tài khoản người dùng hệ thống)
+### 3.1. Collection `members` (Tài khoản người dùng hệ thống)
 Lưu trữ thông tin tài khoản nhân sự TechValley (Admin & Client Manager).
 
-| Tên trường (Column) | Kiểu dữ liệu (MS SQL Server) | Ràng buộc (Constraints) | Mô tả |
+| Tên trường (Field) | Kiểu dữ liệu (MongoDB / BSON) | Ràng buộc (Constraints) | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `id` | `BIGINT` | `PRIMARY KEY`, `IDENTITY(1,1)` | Định danh duy nhất người dùng |
-| `username` | `VARCHAR(50)` | `NOT NULL`, `UNIQUE` | Tên đăng nhập |
-| `password` | `VARCHAR(255)` | `NOT NULL` | Mật khẩu đã được băm (BCrypt/Argon2) |
-| `fullName` | `NVARCHAR(100)` | `NOT NULL` | Họ và tên người dùng (hỗ trợ Unicode) |
-| `role` | `VARCHAR(20)` | `NOT NULL` | Vai trò: `'ADMIN'`, `'CLIENT_MANAGER'` |
-| `createdAt` | `DATETIME2` | `DEFAULT GETDATE()` | Thời gian tạo tài khoản |
+| `_id` / `id` | `ObjectId` / `String` | `PRIMARY KEY`, Auto Generated | Định danh duy nhất người dùng |
+| `username` | `String` | `REQUIRED`, `UNIQUE` | Tên đăng nhập |
+| `password` | `String` | `REQUIRED` | Mật khẩu đã được băm (BCrypt/Argon2) |
+| `fullName` | `String` | `REQUIRED` | Họ và tên người dùng (hỗ trợ UTF-8) |
+| `role` | `String` | `REQUIRED` | Vai trò: `'ADMIN'`, `'CLIENT_MANAGER'` |
+| `createdAt` | `Date` | `DEFAULT ISODate()` | Thời gian tạo tài khoản |
 
-### 3.2. Bảng `clients` (Thông tin Khách hàng)
+### 3.2. Collection `clients` (Thông tin Khách hàng)
 Lưu trữ thông tin doanh nghiệp/khách hàng thuê hạ tầng Cloud.
 
-| Tên trường (Column) | Kiểu dữ liệu (MS SQL Server) | Ràng buộc (Constraints) | Mô tả |
+| Tên trường (Field) | Kiểu dữ liệu (MongoDB / BSON) | Ràng buộc (Constraints) | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `id` | `BIGINT` | `PRIMARY KEY`, `IDENTITY(1,1)` | Định danh duy nhất khách hàng |
-| `name` | `NVARCHAR(100)` | `NOT NULL` | Tên khách hàng / Công ty |
-| `email` | `VARCHAR(100)` | `NOT NULL`, `UNIQUE` | Email liên hệ chính |
-| `company` | `NVARCHAR(100)` | `NULLABLE` | Tên doanh nghiệp đại diện |
-| `contractPlan` | `VARCHAR(20)` | `NOT NULL` | Gói hợp đồng: `'BASIC'`, `'STANDARD'`, `'ENTERPRISE'` |
-| `managerId` | `BIGINT` | `NOT NULL`, `FK -> members(id)` | Quản lý phụ trách khách hàng |
-| `createdAt` | `DATETIME2` | `DEFAULT GETDATE()` | Thời gian khởi tạo dữ liệu |
+| `_id` / `id` | `ObjectId` / `String` | `PRIMARY KEY`, Auto Generated | Định danh duy nhất khách hàng |
+| `name` | `String` | `REQUIRED` | Tên khách hàng / Công ty |
+| `email` | `String` | `REQUIRED`, `UNIQUE` | Email liên hệ chính |
+| `company` | `String` | `OPTIONAL` | Tên doanh nghiệp đại diện |
+| `contractPlan` | `String` | `REQUIRED` | Gói hợp đồng: `'BASIC'`, `'STANDARD'`, `'ENTERPRISE'` |
+| `managerId` | `ObjectId` / `String` | `REQUIRED`, `Ref -> members._id` | Quản lý phụ trách khách hàng |
+| `createdAt` | `Date` | `DEFAULT ISODate()` | Thời gian khởi tạo dữ liệu |
 
-### 3.3. Bảng `instances` (Thông tin Máy chủ ảo / Cloud Instance)
+### 3.3. Collection `instances` (Thông tin Máy chủ ảo / Cloud Instance)
 Lưu trữ hạ tầng máy chủ của từng khách hàng.
 
-| Tên trường (Column) | Kiểu dữ liệu (MS SQL Server) | Ràng buộc (Constraints) | Mô tả |
+| Tên trường (Field) | Kiểu dữ liệu (MongoDB / BSON) | Ràng buộc (Constraints) | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `id` | `BIGINT` | `PRIMARY KEY`, `IDENTITY(1,1)` | Định danh duy nhất instance |
-| `clientId` | `BIGINT` | `NOT NULL`, `FK -> clients(id)` | Khách hàng sở hữu instance |
-| `name` | `VARCHAR(100)` | `NOT NULL` | Tên gợi nhớ của instance |
-| `region` | `VARCHAR(50)` | `NOT NULL` | Vùng máy chủ (e.g. `'ap-southeast-1'`, `'us-east-1'`) |
-| `type` | `VARCHAR(50)` | `NOT NULL` | Cấu hình máy chủ (e.g. `'t3.medium'`, `'c5.xlarge'`) |
-| `status` | `VARCHAR(20)` | `NOT NULL` | Trạng thái: `'RUNNING'`, `'STOPPED'`, `'ERROR'` |
-| `cpuUsage` | `FLOAT` | `NOT NULL`, `DEFAULT 0.0` | Tỷ lệ sử dụng CPU hiện tại (0.0% - 100.0%) |
-| `monthlyCost` | `DECIMAL(10,2)` | `NOT NULL`, `DEFAULT 0.00` | Chi phí định mức hàng tháng ($ USD) |
-| `lastUpdated` | `DATETIME2` | `DEFAULT GETDATE()` | Thời điểm cập nhật chỉ số gần nhất |
-| `createdAt` | `DATETIME2` | `DEFAULT GETDATE()` | Thời điểm khởi tạo instance |
+| `_id` / `id` | `ObjectId` / `String` | `PRIMARY KEY`, Auto Generated | Định danh duy nhất instance |
+| `clientId` | `ObjectId` / `String` | `REQUIRED`, `Ref -> clients._id` | Khách hàng sở hữu instance |
+| `name` | `String` | `REQUIRED` | Tên gợi nhớ của instance |
+| `region` | `String` | `REQUIRED` | Vùng máy chủ (e.g. `'ap-southeast-1'`, `'us-east-1'`) |
+| `type` | `String` | `REQUIRED` | Cấu hình máy chủ (e.g. `'t3.medium'`, `'c5.xlarge'`) |
+| `status` | `String` | `REQUIRED` | Trạng thái: `'RUNNING'`, `'STOPPED'`, `'ERROR'` |
+| `cpuUsage` | `Double` | `REQUIRED`, `DEFAULT 0.0` | Tỷ lệ sử dụng CPU hiện tại (0.0% - 100.0%) |
+| `monthlyCost` | `Double` | `REQUIRED`, `DEFAULT 0.00` | Chi phí định mức hàng tháng ($ USD) |
+| `lastUpdated` | `Date` | `DEFAULT ISODate()` | Thời điểm cập nhật chỉ số gần nhất |
+| `createdAt` | `Date` | `DEFAULT ISODate()` | Thời điểm khởi tạo instance |
 
-### 3.4. Bảng `alerts` (Nhật ký Cảnh báo Hệ thống)
+### 3.4. Collection `alerts` (Nhật ký Cảnh báo Hệ thống)
 Lưu lịch sử các cảnh báo phát sinh từ máy chủ.
 
-| Tên trường (Column) | Kiểu dữ liệu (MS SQL Server) | Ràng buộc (Constraints) | Mô tả |
+| Tên trường (Field) | Kiểu dữ liệu (MongoDB / BSON) | Ràng buộc (Constraints) | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `id` | `BIGINT` | `PRIMARY KEY`, `IDENTITY(1,1)` | Định danh cảnh báo |
-| `instanceId` | `BIGINT` | `NOT NULL`, `FK -> instances(id)` | Instance phát sinh cảnh báo |
-| `type` | `VARCHAR(30)` | `NOT NULL` | Loại cảnh báo: `'HIGH_CPU'`, `'SYSTEM_ERROR'`, `'LONG_STOPPED'` |
-| `severity` | `VARCHAR(20)` | `NOT NULL` | Mức độ nghiêm trọng: `'INFO'`, `'WARNING'`, `'CRITICAL'` |
-| `message` | `NVARCHAR(MAX)` | `NOT NULL` | Nội dung mô tả chi tiết sự cố |
-| `isResolved` | `BIT` | `NOT NULL`, `DEFAULT 0` | Trạng thái xử lý (`1`: Đã xử lý, `0`: Chưa xử lý) |
-| `createdAt` | `DATETIME2` | `DEFAULT GETDATE()` | Thời gian phát sinh cảnh báo |
-| `resolvedAt` | `DATETIME2` | `NULLABLE` | Thời gian đánh dấu hoàn tất xử lý |
+| `_id` / `id` | `ObjectId` / `String` | `PRIMARY KEY`, Auto Generated | Định danh cảnh báo |
+| `instanceId` | `ObjectId` / `String` | `REQUIRED`, `Ref -> instances._id` | Instance phát sinh cảnh báo |
+| `type` | `String` | `REQUIRED` | Loại cảnh báo: `'HIGH_CPU'`, `'SYSTEM_ERROR'`, `'LONG_STOPPED'` |
+| `severity` | `String` | `REQUIRED` | Mức độ nghiêm trọng: `'INFO'`, `'WARNING'`, `'CRITICAL'` |
+| `message` | `String` | `REQUIRED` | Nội dung mô tả chi tiết sự cố |
+| `isResolved` | `Boolean` | `REQUIRED`, `DEFAULT false` | Trạng thái xử lý (`true`: Đã xử lý, `false`: Chưa xử lý) |
+| `createdAt` | `Date` | `DEFAULT ISODate()` | Thời gian phát sinh cảnh báo |
+| `resolvedAt` | `Date` | `OPTIONAL` | Thời gian đánh dấu hoàn tất xử lý |
 
-### 3.5. Bảng `cost_snapshots` (Lịch sử Đóng băng Chi phí)
+### 3.5. Collection `cost_snapshots` (Lịch sử Đóng băng Chi phí)
 Lưu tổng chi phí hàng tháng của từng client phục vụ thống kê & dự báo.
 
-| Tên trường (Column) | Kiểu dữ liệu (MS SQL Server) | Ràng buộc (Constraints) | Mô tả |
+| Tên trường (Field) | Kiểu dữ liệu (MongoDB / BSON) | Ràng buộc (Constraints) | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `id` | `BIGINT` | `PRIMARY KEY`, `IDENTITY(1,1)` | Định danh snapshot |
-| `clientId` | `BIGINT` | `NOT NULL`, `FK -> clients(id)` | Mã khách hàng |
-| `yearMonth` | `VARCHAR(7)` | `NOT NULL` | Tháng ghi nhận dạng `'YYYY-MM'` (e.g. `'2026-07'`) |
-| `totalCost` | `DECIMAL(10,2)` | `NOT NULL` | Tổng chi phí trong tháng ($ USD) |
-| `recordedAt` | `DATETIME2` | `DEFAULT GETDATE()` | Thời điểm chốt dữ liệu |
+| `_id` / `id` | `ObjectId` / `String` | `PRIMARY KEY`, Auto Generated | Định danh snapshot |
+| `clientId` | `ObjectId` / `String` | `REQUIRED`, `Ref -> clients._id` | Mã khách hàng |
+| `yearMonth` | `String` | `REQUIRED` | Tháng ghi nhận dạng `'YYYY-MM'` (e.g. `'2026-07'`) |
+| `totalCost` | `Double` | `REQUIRED` | Tổng chi phí trong tháng ($ USD) |
+| `recordedAt` | `Date` | `DEFAULT ISODate()` | Thời điểm chốt dữ liệu |
 
 ---
 
@@ -449,7 +449,7 @@ Tất cả API trong hệ thống đều tuân thủ cấu trúc JSON đồng nh
 
 | Thành viên | Mô-đun Chức năng Đảm nhận | Chi tiết Công việc & Các API Phụ trách |
 | :--- | :--- | :--- |
-| **Member A** | **Chức năng 1: Xác thực & Phân quyền (Auth & Security)** | • **DB Lead:** Thiết kế bảng `members` & sơ đồ ERD tổng thể.<br>• **Xác thực:** Triển khai API `POST /api/auth/login` (JWT Token generation & verification).<br>• **Bảo mật:** Triển khai JWT Authentication Filter & Phân quyền Role-Based Access Control (`ADMIN`, `CLIENT_MANAGER`).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần ERD & Security. |
+| **Member A** | **Chức năng 1: Xác thực & Phân quyền (Auth & Security)** | • **DB Lead:** Thiết kế collection `members` & sơ đồ Collections MongoDB tổng thể.<br>• **Xác thực:** Triển khai API `POST /api/auth/login` (JWT Token generation & verification).<br>• **Bảo mật:** Triển khai JWT Authentication Filter & Phân quyền Role-Based Access Control (`ADMIN`, `CLIENT_MANAGER`).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Database Schema & Security. |
 | **Member B** | **Chức năng 2: Quản lý Khách hàng (Client Management)** | • **Quản lý dữ liệu Client:** Triển khai API Tạo mới (`POST /api/clients`), Xem danh sách với Phân trang, Tìm kiếm & Lọc (`GET /api/clients`).<br>• **Quản lý quan hệ:** Triển khai API Lấy danh sách instance thuộc client (`GET /api/clients/{id}/instances`).<br>• **Phân quyền:** Cấu hình logic giới hạn dữ liệu theo `managerId`.<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Client Management. |
 | **Member C** | **Chức năng 3: Quản lý Máy chủ ảo (Instance Management)** | • **CRUD Instance:** Triển khai API Tạo mới (`POST /api/instances`), Danh sách (`GET /api/instances`), Chi tiết (`GET /api/instances/{id}`).<br>• **Điều khiển & Validate:** Triển khai Cập nhật trạng thái/CPU (`PATCH /api/instances/{id}/status`) và Xóa instance (`DELETE /api/instances/{id}`).<br>• **Business Rule:** Logic chặn xóa instance đang `RUNNING` (HTTP 400).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Instance Management. |
 | **Member D** | **Chức năng 4: Giám sát Hạ tầng & Quản lý Cảnh báo (Monitoring & Alert System)** | • **Giám sát tự động:** Triển khai Monitoring API (`GET /api/monitor/warnings`, `/errors`, `/long-stopped`, `/report`).<br>• **Quản lý Cảnh báo:** Triển khai Alert API (`GET /api/alerts`, `PATCH /api/alerts/{id}/resolve`).<br>• **Business Rule:** Logic tự động phát sinh Alert (`HIGH_CPU`, `SYSTEM_ERROR`) & Logic chống trùng lặp Alert (Alert Deduplication Check).<br>• **Tài liệu:** Đóng góp báo cáo/slide phần Monitoring & Alerts. |
@@ -474,7 +474,7 @@ Tất cả API trong hệ thống đều tuân thủ cấu trúc JSON đồng nh
 1. **Làm việc cá nhân:** Thành viên checkout từ `develop` ra nhánh `feature/...` của mình để viết code.
 2. **Push & Tạo PR:** Khi hoàn thành, push nhánh `feature/...` lên Remote Repository và mở **Pull Request (PR) vào nhánh `develop`**.
 3. **Review & Merge vào `develop`:** Trưởng nhóm (hoặc ít nhất 1 Teammate) thực hiện Review Code, kiểm tra logic. Nếu đạt yêu cầu thì Approve và Merge vào `develop`.
-4. **Kiểm thử hệ thống (Testing trên `develop`):** Cả nhóm test lại các luồng API trên nhánh `develop` (Swagger, Postman, kết nối CSDL SQL Server).
+4. **Kiểm thử hệ thống (Testing trên `develop`):** Cả nhóm test lại các luồng API trên nhánh `develop` (Swagger, Postman, kết nối CSDL MongoDB).
 5. **Release lên `main`:** Khi toàn bộ các tính năng trên `develop` đã ổn định và OK, Trưởng nhóm mở PR gộp từ `develop` -> `main` để chốt phiên bản Demo chính thức.
 
 ### 8.3. Chuẩn Commit Message (Conventional Commits)
@@ -488,7 +488,7 @@ Tất cả API trong hệ thống đều tuân thủ cấu trúc JSON đồng nh
 ## 9. CHECKLIST KIỂM THỬ VÀ NỘP BÀI (ACCEPTANCE CRITERIA)
 
 - [x] Tài liệu Đặc tả Specification đầy đủ schema, API, logic và phân công.
-- [ ] Database ERD khớp 100% với định nghĩa các Entity trong code.
+- [ ] Database Schema & Collections trong MongoDB Compass khớp 100% với định nghĩa các Model/Document trong code.
 - [ ] API Đăng nhập thành công trả về JWT Bearer Token hợp lệ.
 - [ ] Phân quyền RBAC chính xác (`ADMIN` xem được tất cả, `CLIENT_MANAGER` chỉ thấy client mình quản lý).
 - [ ] API `GET /api/monitor/warnings` và `errors` tự động tạo Alert đúng logic chống trùng lặp.
