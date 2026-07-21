@@ -455,18 +455,29 @@ Tất cả API trong hệ thống đều tuân thủ cấu trúc JSON đồng nh
 
 ## 8. QUY TRÌNH QUẢN LÝ NGUỒN MÃ NGUỒN (GIT FLOW STANDARD)
 
-### 8.1. Cấu trúc Nhánh (Branches)
-- `main`: Chứa mã nguồn ổn định sẵn sàng Demo / Production.
-- `develop`: Nhánh tích hợp chính cho tất cả tính năng trong quá trình làm việc.
-- `feature/{member-task}`: Nhánh phát triển tính năng cá nhân (VD: `feature/auth-jwt`, `feature/instance-crud`, `feature/llm-diagnosis`).
+### 8.1. Cấu trúc Nhánh (Branching Strategy)
+- **`main` (Production / Final Demo Branch):** 
+  - Nhánh chứa mã nguồn **ổn định nhất 100%**, sẵn sàng đem đi báo cáo, nộp bài hoặc Demo.
+  - **Tuyệt đối KHÔNG push code trực tiếp vào `main`**. Chỉ gộp (merge) từ nhánh `develop` sang `main` sau khi đã review và kiểm thử hệ thống chạy ổn định.
+- **`develop` / `dev` (Integration Branch):**
+  - Nhánh tích hợp chung của cả nhóm. Tất cả tính năng sau khi thành viên làm xong sẽ được tạo Pull Request (PR) để gộp vào nhánh này.
+  - Nhóm sẽ chạy test API, kiểm tra xung đột (conflict) và kiểm thử liên mô-đun trên nhánh `develop`.
+- **`feature/{member-task}` (Feature Branches):**
+  - Nhánh cá nhân riêng cho từng nhiệm vụ (VD: `feature/auth-jwt`, `feature/instance-crud`, `feature/llm-diagnosis`).
+  - Thành viên làm việc độc lập trên nhánh này, tránh gây ảnh hưởng tới người khác.
 
-### 8.2. Quy trình Commit & Pull Request (PR)
-- Commit message tuân thủ chuẩn Conventional Commits:
-  - `feat: add jwt login api`
-  - `fix: prevent deleting running instance`
-  - `docs: update swagger endpoints`
-- Mọi thay đổi code trên nhánh cá nhân phải được đẩy lên và tạo Pull Request (PR) vào nhánh `develop`.
-- PR bắt buộc phải có ít nhất **1 thành viên khác (Peer Reviewer)** duyệt mới đủ điều kiện Merge.
+### 8.2. Quy trình làm việc & Duyệt Code (Workflow & Pull Request)
+1. **Làm việc cá nhân:** Thành viên checkout từ `develop` ra nhánh `feature/...` của mình để viết code.
+2. **Push & Tạo PR:** Khi hoàn thành, push nhánh `feature/...` lên Remote Repository và mở **Pull Request (PR) vào nhánh `develop`**.
+3. **Review & Merge vào `develop`:** Trưởng nhóm (hoặc ít nhất 1 Teammate) thực hiện Review Code, kiểm tra logic. Nếu đạt yêu cầu thì Approve và Merge vào `develop`.
+4. **Kiểm thử hệ thống (Testing trên `develop`):** Cả nhóm test lại các luồng API trên nhánh `develop` (Swagger, Postman, kết nối CSDL SQL Server).
+5. **Release lên `main`:** Khi toàn bộ các tính năng trên `develop` đã ổn định và OK, Trưởng nhóm mở PR gộp từ `develop` -> `main` để chốt phiên bản Demo chính thức.
+
+### 8.3. Chuẩn Commit Message (Conventional Commits)
+- `feat: add jwt login api`
+- `fix: prevent deleting running instance`
+- `docs: update swagger endpoints`
+- `refactor: optimize cost calculation service`
 
 ---
 
