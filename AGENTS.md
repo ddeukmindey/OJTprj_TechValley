@@ -36,3 +36,49 @@ Khi khởi tạo mã nguồn giao diện (Frontend Code), thiết kế component
 5. **Typography**:
    - Font Family: Inter / Plus Jakarta Sans / Roboto (Sans-serif primary); JetBrains Mono / Fira Code (Monospace cho ID, IP, Code, Logs).
    - Hierarchy: H1 Page Title (24px Bold), H2 Section (18px Semibold), H3 Metric Label (14px Semibold), Body Primary (14px Regular), Body Small/Muted (12px Slate 500), Data/Numbers (24px-32px Bold).
+
+---
+
+## 2. QUY CHUẨN KIẾN TRÚC TẦNG BACKEND (LAYERED ARCHITECTURE GUIDELINE)
+Tất cả mã nguồn Backend cho **Cloud Instance Monitoring System** phải tuân thủ nghiêm ngặt mô hình kiến trúc phân tầng (Layered Architecture): `Controller -> Service -> Repository -> Entity/Model`, chi tiết tại [specification_OJTprj.md](file:///d:/OTJprj_TechValley/specification_OJTprj.md).
+
+### Ràng buộc trách nhiệm giữa các tầng (Layer Separation Rules):
+1. **Controller Layer (REST API Endpoints)**:
+   - Chỉ chịu trách nhiệm tiếp nhận HTTP Request, validate tham số đầu vào (`@Valid`, DTOs), kiểm tra JWT Auth/RBAC, và trả về response theo chuẩn **API Envelope (`success`, `code`, `message`, `data`, `timestamp`)**.
+   - Tuyệt đối **KHÔNG** chứa logic xử lý nghiệp vụ hay truy vấn CSDL trực tiếp trong Controller.
+   - Tích hợp OpenAPI / Swagger Annotations đầy đủ cho mọi Endpoint.
+   - Xử lý ngoại lệ tập trung qua Global Exception Handler (`@ControllerAdvice`), chuyển đổi Exception thành Response JSON chuẩn (HTTP 400, 401, 403, 404, 500).
+2. **Service Layer (Business Logic & Enforcement)**:
+   - Chứa 100% logic nghiệp vụ của hệ thống:
+     - **RBAC Data Isolation**: `CLIENT_MANAGER` chỉ truy cập/thao tác dữ liệu thuộc Client mà mình phụ trách (`managerId == currentUserId`).
+     - **Instance Deletion Policy**: Kiểm tra trạng thái Instance trước khi xóa. Nếu `status == 'RUNNING'`, ngắt xử lý và ném ngoại lệ `InvalidOperationException` -> HTTP 400 Bad Request. Chỉ cho phép xóa khi `STOPPED` hoặc `ERROR`.
+     - **Auto Alert & Deduplication**: Logic tự phát sinh cảnh báo khi `cpuUsage >= 80` (`HIGH_CPU`) hoặc `status == 'ERROR'` (`SYSTEM_ERROR`), đồng thời kiểm tra chống tạo trùng Alert nếu đã có Alert chưa xử lý (`isResolved == false`) cho cùng Instance.
+     - **Cost Forecast & SLA Calculation**: Tính toán chi phí dự báo dựa trên các Instance đang `RUNNING` và chỉ số phần trăm SLA theo uptime.
+3. **Repository Layer (Data Access & Persistence)**:
+   - Trích xuất và thao tác dữ liệu với MongoDB Collections.
+   - Sử dụng Spring Data MongoDB Repositories hoặc Mongoose Models.
+   - Quản lý các truy vấn phức tạp (Aggregation Pipeline) phục vụ thống kê chi phí, dự báo và tính toán SLA.
+   - Quản lý tham chiếu ObjectId chính xác giữa các Document.
+4. **Entity / Model Layer (Data Schema Definitions)**:
+   - Định nghĩa cấu trúc Document mapping 1:1 với 5 Collections MongoDB (`members`, `clients`, `instances`, `alerts`, `cost_snapshots`).
+   - Đảm bảo các thuộc tính bắt buộc, định dạng kiểu dữ liệu (ObjectId, String, Double, Boolean, Date) và trường audit (`createdAt`, `updatedAt`, `lastUpdated`).
+
+---
+
+## 3. QUY CHUẨN CƠ SỞ DỮ LIỆU MONGODB & MONGO COMPASS (DATABASE GUIDELINE)
+Toàn bộ thiết kế dữ liệu tuân thủ mô hình Document Database trên **MongoDB**, quản lý và trực quan hóa qua công cụ GUI **MongoDB Compass**, chi tiết tại [specification_OJTprj.md](file:///d:/OTJprj_TechValley/specification_OJTprj.md#L41-L111).
+
+### Các quy tắc CSDL cốt lõi:
+1. **Chuẩn tên Collections & Trường dữ liệu (Naming Conventions)**:
+   - Tên Collections dùng chữ thường snake_case/plural: `members`, `clients`, `instances`, `alerts`, `cost_snapshots`.
+   - Tên trường (Fields) dùng camelCase: `fullName`, `contractPlan`, `managerId`, `cpuUsage`, `monthlyCost`, `isResolved`, `yearMonth`.
+2. **Mô hình Liên kết ObjectId (Document Relationships)**:
+   - `clients.managerId` -> Tham chiếu tới `members._id` (ObjectId).
+   - `instances.clientId` -> Tham chiếu tới `clients._id` (ObjectId).
+   - `alerts.instanceId` -> Tham chiếu tới `instances._id` (ObjectId).
+   - `cost_snapshots.clientId` -> Tham chiếu tới `clients._id` (ObjectId).
+3. **Quản lý Chỉ mục (Indexing Strategy in Mongo Compass)**:
+   - Đánh Index duy nhất (Unique Index) cho `members.username` và `clients.email`.
+   - Đánh Compound/Single Index cho các trường tần suất truy vấn cao: `clients.managerId`, `instances.clientId`, `instances.status`, `alerts.instanceId`, `alerts.isResolved`.
+4. **Quy chuẩn Quản trị qua MongoDB Compass**:
+   - Đảm bảo các Aggregation Pipeline (như tính tổng `monthlyCost`, nhóm `alerts` theo `severity`) chạy hiệu quả và kiểm thử thành công trên MongoDB Compass Aggregation Builder trước khi chuyển giao vào Repository layer.
