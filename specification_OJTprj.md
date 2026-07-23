@@ -496,4 +496,5 @@ Tất cả API trong hệ thống đều tuân thủ cấu trúc JSON đồng nh
 - [ ] Công thức tính SLA và Cost Forecast hoạt động khớp với dữ liệu giả lập.
 - [ ] Endpoint LLM Diagnosis hoạt động tốt và trả về gợi ý khắc phục sự cố hợp lý.
 - [ ] Swagger UI hiển thị đầy đủ thông tin tất cả endpoint và có thể test trực tiếp.
+- [ ] Mã nguồn Frontend & Giao diện Dashboard tuân thủ nghiêm ngặt theo [UInUX_guideline.md](file:///d:/OTJprj_TechValley/UInUX_guideline.md) (Layout Admin, Semantic Colors, 5 Core UI States, Disable nút Delete khi RUNNING, Skeleton Loaders).
 - [ ] Git commit history rõ ràng, không có commit rác, đúng flow nhánh `develop` & `main`.

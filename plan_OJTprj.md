@@ -149,5 +149,6 @@ Xây dựng Cloud Instance Monitoring System REST API cho TechValley, tập trun
 - [ ] SLA và cost forecast tính hợp lý.
 - [ ] LLM feature chạy được.
 - [ ] Swagger đầy đủ endpoint.
+- [ ] Frontend tuân thủ nghiêm ngặt theo [UInUX_guideline.md](file:///d:/OTJprj_TechValley/UInUX_guideline.md).
 - [ ] Git history sạch và đúng flow.
 - [ ] PPT có giải thích thiết kế, không chỉ liệt kê chức năng.
