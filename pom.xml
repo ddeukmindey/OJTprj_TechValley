@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.techvalley</groupId>
+    <artifactId>ojtprj-techvalley</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>OJTPRJ_TECHVALLEY</name>
+    <description>Root POM for TechValley Microservices</description>
+
+    <!-- Khai báo danh sách các module con -->
+    <modules>
+        <module>common-lib</module>
+        <module>auth-gateway-service</module>
+        <module>cloud-monitor-service</module>
+        <module>llm-service</module>
+    </modules>
+
+</project>
