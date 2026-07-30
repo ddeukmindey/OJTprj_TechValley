@@ -26,6 +26,6 @@ public class Member {
 
     @Enumerated(EnumType.STRING)
     private Role role; // ADMIN hoặc CLIENT_MANAGER
-
+    @Column(nullable = false)
     private LocalDateTime createAt;
 }
