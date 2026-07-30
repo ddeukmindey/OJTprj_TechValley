@@ -55,30 +55,35 @@ Tất cả mã nguồn Backend cho **Cloud Instance Monitoring System** phải t
      - **Auto Alert & Deduplication**: Logic tự phát sinh cảnh báo khi `cpuUsage >= 80` (`HIGH_CPU`) hoặc `status == 'ERROR'` (`SYSTEM_ERROR`), đồng thời kiểm tra chống tạo trùng Alert nếu đã có Alert chưa xử lý (`isResolved == false`) cho cùng Instance.
      - **Cost Forecast & SLA Calculation**: Tính toán chi phí dự báo dựa trên các Instance đang `RUNNING` và chỉ số phần trăm SLA theo uptime.
 3. **Repository Layer (Data Access & Persistence)**:
-   - Trích xuất và thao tác dữ liệu với MongoDB Collections.
-   - Sử dụng Spring Data MongoDB Repositories hoặc Mongoose Models.
-   - Quản lý các truy vấn phức tạp (Aggregation Pipeline) phục vụ thống kê chi phí, dự báo và tính toán SLA.
-   - Quản lý tham chiếu ObjectId chính xác giữa các Document.
+   - Trích xuất và thao tác dữ liệu với PostgreSQL Tables.
+   - Sử dụng Spring Data JPA Repositories (hoặc Hibernate / JDBC).
+   - Quản lý các truy vấn SQL (SQL Aggregations: JOIN, GROUP BY, SUM, AVG) phục vụ thống kê chi phí, dự báo và tính toán SLA.
+   - Quản lý tham chiếu Khóa ngoại (Foreign Key / Primary Key) chính xác giữa các Bảng.
 4. **Entity / Model Layer (Data Schema Definitions)**:
-   - Định nghĩa cấu trúc Document mapping 1:1 với 5 Collections MongoDB (`members`, `clients`, `instances`, `alerts`, `cost_snapshots`).
-   - Đảm bảo các thuộc tính bắt buộc, định dạng kiểu dữ liệu (ObjectId, String, Double, Boolean, Date) và trường audit (`createdAt`, `updatedAt`, `lastUpdated`).
+   - Định nghĩa cấu trúc Entity `@Entity` `@Table` mapping 1:1 với 5 Bảng PostgreSQL (`members`, `clients`, `instances`, `alerts`, `cost_snapshots`).
+   - Đảm bảo các thuộc tính bắt buộc, định dạng kiểu dữ liệu (Long/BIGINT, String/VARCHAR, Double/DOUBLE PRECISION, Boolean, Timestamp/Date) và trường audit (`createdAt`, `updatedAt`, `lastUpdated`).
 
 ---
 
-## 3. QUY CHUẨN CƠ SỞ DỮ LIỆU MONGODB & MONGO COMPASS (DATABASE GUIDELINE)
-Toàn bộ thiết kế dữ liệu tuân thủ mô hình Document Database trên **MongoDB**, quản lý và trực quan hóa qua công cụ GUI **MongoDB Compass**, chi tiết tại [specification_OJTprj.md](file:///d:/OTJprj_TechValley/specification_OJTprj.md#L41-L111).
+## 3. QUY CHUẨN CƠ SỞ DỮ LIỆU POSTGRESQL & PGADMIN 4 (DATABASE GUIDELINE)
+Toàn bộ thiết kế dữ liệu tuân thủ mô hình CSDL Quan hệ (Relational RDBMS) trên **PostgreSQL**, quản lý và trực quan hóa qua công cụ GUI **pgAdmin 4**, chi tiết tại [specification_OJTprj.md](file:///d:/OTJprj_TechValley/specification_OJTprj.md#L41-L111).
 
 ### Các quy tắc CSDL cốt lõi:
-1. **Chuẩn tên Collections & Trường dữ liệu (Naming Conventions)**:
-   - Tên Collections dùng chữ thường snake_case/plural: `members`, `clients`, `instances`, `alerts`, `cost_snapshots`.
-   - Tên trường (Fields) dùng camelCase: `fullName`, `contractPlan`, `managerId`, `cpuUsage`, `monthlyCost`, `isResolved`, `yearMonth`.
-2. **Mô hình Liên kết ObjectId (Document Relationships)**:
-   - `clients.managerId` -> Tham chiếu tới `members._id` (ObjectId).
-   - `instances.clientId` -> Tham chiếu tới `clients._id` (ObjectId).
-   - `alerts.instanceId` -> Tham chiếu tới `instances._id` (ObjectId).
-   - `cost_snapshots.clientId` -> Tham chiếu tới `clients._id` (ObjectId).
-3. **Quản lý Chỉ mục (Indexing Strategy in Mongo Compass)**:
-   - Đánh Index duy nhất (Unique Index) cho `members.username` và `clients.email`.
-   - Đánh Compound/Single Index cho các trường tần suất truy vấn cao: `clients.managerId`, `instances.clientId`, `instances.status`, `alerts.instanceId`, `alerts.isResolved`.
-4. **Quy chuẩn Quản trị qua MongoDB Compass**:
-   - Đảm bảo các Aggregation Pipeline (như tính tổng `monthlyCost`, nhóm `alerts` theo `severity`) chạy hiệu quả và kiểm thử thành công trên MongoDB Compass Aggregation Builder trước khi chuyển giao vào Repository layer.
+1. **Chuẩn tên Bảng & Cột (Naming Conventions)**:
+   - Tên Bảng (Tables) dùng chữ thường snake_case/plural: `members`, `clients`, `instances`, `alerts`, `cost_snapshots`.
+   - Tên cột (Columns) chính xác trong DB Schema:
+     - `members`: `id`, `name`, `password`, `role`, `created_at`
+     - `clients`: `id`, `client_name`, `contract_plan`, `create_at`, `manager_id`
+     - `instances`: `id`, `client_id`, `cpu_usage`, `instance_name`, `instance_type`, `launche_at`, `monthly_cost`, `region`, `status`, `update_at`
+     - `alerts`: `id`, `instance_id`, `alert_type`, `detected_at`, `is_resolve`, `message`, `resolve_at`
+     - `cost_snapshots`: `id`, `client_id`, `year_month`, `total_cost`, `recorded_at`
+2. **Mô hình Liên kết Khóa Ngoại (Foreign Key Relationships)**:
+   - `clients.manager_id` -> Khóa ngoại tham chiếu tới `members.id` (PRIMARY KEY `id` - BIGINT/BIGSERIAL).
+   - `instances.client_id` -> Khóa ngoại tham chiếu tới `clients.id` (PRIMARY KEY `id` - BIGINT/BIGSERIAL).
+   - `alerts.instance_id` -> Khóa ngoại tham chiếu tới `instances.id` (PRIMARY KEY `id` - BIGINT/BIGSERIAL).
+   - `cost_snapshots.client_id` -> Khóa ngoại tham chiếu tới `clients.id` (PRIMARY KEY `id` - BIGINT/BIGSERIAL).
+3. **Quản lý Chỉ mục (Indexing Strategy in pgAdmin 4)**:
+   - Đánh Unique Index / Unique Constraint cho `clients.client_name`.
+   - Đánh Single/Composite Index cho các cột tần suất truy vấn cao: `clients.manager_id`, `instances.client_id`, `instances.status`, `alerts.instance_id`, `alerts.is_resolve`.
+4. **Quy chuẩn Quản trị qua pgAdmin 4**:
+   - Đảm bảo các truy vấn SQL (như tính tổng `monthly_cost`, nhóm `alerts` theo `alert_type`) chạy hiệu quả và kiểm thử thành công trên pgAdmin 4 Query Tool trước khi chuyển giao vào Repository layer.
