@@ -57,6 +57,13 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Thư viện giao diện Swagger UI / OpenAPI Document -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
         <!-- Thư viện chạy Unit Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
