@@ -17,4 +17,5 @@ public class MonitoringReportResponse {
     private long errorInstances;
     private double averageCpuUsage;
     private long unresolvedAlerts;
+    private long totalClients;
 }

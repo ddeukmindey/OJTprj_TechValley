@@ -2,6 +2,7 @@ package com.techvalley.monitor.monitoring.service.impl;
 
 import com.techvalley.monitor.alert.Alert;
 import com.techvalley.monitor.alert.repository.AlertRepository;
+import com.techvalley.monitor.client.repository.ClientRepository;
 import com.techvalley.monitor.enums.AlertType;
 import com.techvalley.monitor.enums.InstanceStatus;
 import com.techvalley.monitor.instance.Instance;
@@ -24,6 +25,7 @@ public class MonitoringServiceImpl implements MonitoringService {
 
     private final InstanceRepository instanceRepository;
     private final AlertRepository alertRepository;
+    private final ClientRepository clientRepository;
     private final MonitoringMapper monitoringMapper;
 
     private static final Float CPU_WARNING_THRESHOLD = 80.0f;
@@ -87,6 +89,7 @@ public class MonitoringServiceImpl implements MonitoringService {
                 .orElse(0.0);
 
         long unresolvedAlerts = alertRepository.countByIsResolved(0);
+        long totalClients = clientRepository.count();
 
         return MonitoringReportResponse.builder()
                 .totalInstances(totalCount)
@@ -95,6 +98,7 @@ public class MonitoringServiceImpl implements MonitoringService {
                 .errorInstances(errorCount)
                 .averageCpuUsage(Math.round(avgCpu * 100.0) / 100.0)
                 .unresolvedAlerts(unresolvedAlerts)
+                .totalClients(totalClients)
                 .build();
     }
 
