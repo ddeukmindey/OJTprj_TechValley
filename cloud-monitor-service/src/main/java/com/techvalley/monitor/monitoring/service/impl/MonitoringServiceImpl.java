@@ -32,68 +32,41 @@ public class MonitoringServiceImpl implements MonitoringService {
     @Override
     @Transactional
     public List<MonitoringInstanceResponse> getWarnings() {
-        List<Instance> highCpuInstances = instanceRepository.findByCpuUsageGreaterThanEqual(CPU_WARNING_THRESHOLD);
+        List<Instance> instances = instanceRepository.findByCpuUsageGreaterThanEqual(CPU_WARNING_THRESHOLD);
+        instances.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.CPU_HIGH, "Tải CPU cao bất thường: " + i.getCpuUsage() + "%"));
 
-        for (Instance instance : highCpuInstances) {
-            Optional<Alert> existingAlert = alertRepository.findFirstByInstanceIdAndAlertTypeAndIsResolved(
-                    instance.getId(), AlertType.CPU_HIGH, 0);
-
-            if (existingAlert.isEmpty()) {
-                Alert alert = new Alert();
-                alert.setInstanceId(instance.getId());
-                alert.setAlertType(AlertType.CPU_HIGH);
-                alert.setMessage("Tải CPU cao bất thường: " + instance.getCpuUsage() + "%");
-                alert.setIsResolved(0);
-                alert.setDetectedAt(LocalDateTime.now());
-                alertRepository.save(alert);
-            }
-        }
-
-        return highCpuInstances.stream()
-                .map(instance -> monitoringMapper.toMonitoringInstanceResponse(instance, "Cảnh báo: CPU usage >= 80%"))
+        return instances.stream()
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: CPU usage >= 80%"))
                 .toList();
     }
 
     @Override
     @Transactional
     public List<MonitoringInstanceResponse> getErrors() {
-        List<Instance> errorInstances = instanceRepository.findByStatus(InstanceStatus.ERROR);
+        List<Instance> instances = instanceRepository.findByStatus(InstanceStatus.ERROR);
+        instances.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.ERROR_DETECTED, "Sự cố máy chủ: Instance đang ở trạng thái ERROR"));
 
-        for (Instance instance : errorInstances) {
-            Optional<Alert> existingAlert = alertRepository.findFirstByInstanceIdAndAlertTypeAndIsResolved(
-                    instance.getId(), AlertType.ERROR_DETECTED, 0);
-
-            if (existingAlert.isEmpty()) {
-                Alert alert = new Alert();
-                alert.setInstanceId(instance.getId());
-                alert.setAlertType(AlertType.ERROR_DETECTED);
-                alert.setMessage("Sự cố máy chủ: Instance đang ở trạng thái ERROR");
-                alert.setIsResolved(0);
-                alert.setDetectedAt(LocalDateTime.now());
-                alertRepository.save(alert);
-            }
-        }
-
-        return errorInstances.stream()
-                .map(instance -> monitoringMapper.toMonitoringInstanceResponse(instance, "Lỗi: Máy chủ đang gặp sự cố (ERROR)"))
+        return instances.stream()
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Lỗi: Máy chủ đang gặp sự cố (ERROR)"))
                 .toList();
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<MonitoringInstanceResponse> getLongStopped() {
-        LocalDateTime thresholdDate = LocalDateTime.now().minusHours(LONG_STOPPED_HOURS);
-        List<Instance> stoppedInstances = instanceRepository.findByStatus(InstanceStatus.STOPPED);
+        LocalDateTime threshold = LocalDateTime.now().minusHours(LONG_STOPPED_HOURS);
 
-        List<Instance> longStopped = stoppedInstances.stream()
-                .filter(instance -> {
-                    LocalDateTime checkTime = instance.getUpdateAt() != null ? instance.getUpdateAt() : instance.getLauncheAt();
-                    return checkTime != null && checkTime.isBefore(thresholdDate);
+        List<Instance> longStopped = instanceRepository.findByStatus(InstanceStatus.STOPPED).stream()
+                .filter(i -> {
+                    LocalDateTime checkTime = i.getUpdateAt() != null ? i.getUpdateAt() : i.getLauncheAt();
+                    return checkTime != null && checkTime.isBefore(threshold);
                 })
                 .toList();
 
+        longStopped.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.LONG_STOPPED, "Cảnh báo: Máy chủ ngưng hoạt động kéo dài quá 48 giờ"));
+
         return longStopped.stream()
-                .map(instance -> monitoringMapper.toMonitoringInstanceResponse(instance, "Cảnh báo: Máy chủ bị tạm dừng ít nhất 48 giờ"))
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: Máy chủ bị tạm dừng ít nhất 48 giờ"))
                 .toList();
     }
 
@@ -123,5 +96,19 @@ public class MonitoringServiceImpl implements MonitoringService {
                 .averageCpuUsage(Math.round(avgCpu * 100.0) / 100.0)
                 .unresolvedAlerts(unresolvedAlerts)
                 .build();
+    }
+
+    /** Helper method dùng chung để kiểm tra chống trùng lặp và tạo Alert mới */
+    private void createAlertIfAbsent(Long instanceId, AlertType type, String message) {
+        Optional<Alert> existing = alertRepository.findFirstByInstanceIdAndAlertTypeAndIsResolved(instanceId, type, 0);
+        if (existing.isEmpty()) {
+            Alert alert = new Alert();
+            alert.setInstanceId(instanceId);
+            alert.setAlertType(type);
+            alert.setMessage(message);
+            alert.setIsResolved(0);
+            alert.setDetectedAt(LocalDateTime.now());
+            alertRepository.save(alert);
+        }
     }
 }
