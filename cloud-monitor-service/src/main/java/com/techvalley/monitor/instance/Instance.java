@@ -34,4 +34,15 @@ public class Instance {
 
     private LocalDateTime launcheAt;
     private LocalDateTime updateAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.launcheAt = LocalDateTime.now();
+        this.updateAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updateAt = LocalDateTime.now();
+    }
 }
