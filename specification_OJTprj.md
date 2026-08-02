@@ -8,14 +8,23 @@
 ### 1.1. Mục tiêu
 Hệ thống **Cloud Instance Monitoring System** của TechValley được xây dựng dưới dạng **RESTful API**, đóng vai trò là nền tảng quản lý, giám sát hạ tầng máy chủ ảo (Cloud Instances), tự động phát hiện và cảnh báo các bất thường kỹ thuật, tính toán chỉ số chất lượng dịch vụ (SLA), dự báo chi phí vận hành cho khách hàng và tích hợp tính năng Trí tuệ nhân tạo (LLM Feature) hỗ trợ phân tích/tối ưu vận hành.
 
-### 1.2. Công nghệ & Mô hình Triển khai Đề xuất
-- **Mô hình triển khai ứng dụng:** **Đơn bản Server tập trung (Centralized Single Backend REST API Service)**.
-  - *Giải đáp kiến trúc:* **KHÔNG** cần tách thành 2 bản app riêng biệt (Server riêng / Client riêng). Tất cả người dùng (`ADMIN` lẫn `CLIENT_MANAGER`) đều kết nối chung tới **1 REST API Backend Server duy nhất**. Sự phân biệt quyền hạn và truy cập dữ liệu được xử lý tập trung ở tầng Backend qua **JWT Token & Role-Based Access Control (RBAC)**.
-- **Kiến trúc hệ thống:** RESTful Web API (Layered Architecture: Controller - Service - Repository - Entity).
+### 1.2. Công nghệ & Mô hình Triển khai Kiến trúc Vi dịch vụ (MSA - Microservices Architecture)
+- **Mô hình kiến trúc ứng dụng:** **Kiến trúc Vi dịch vụ (Microservices Architecture - MSA)**.
+  - *Đặc tả kiến trúc MSA:* Hệ thống được phân tách thành các Vi dịch vụ (Microservices) độc lập, chạy trong các Docker Container riêng biệt để đảm bảo tính sẵn sàng cao, khả năng đóng gói độc lập và dễ mở rộng:
+    1. **`auth-gateway-service` (Port 8080):** API Gateway & Xác thực JWT (`POST /api/auth/login`), định tuyến request và phân quyền RBAC.
+    2. **`instance-service` (Port 8081):** Quản lý tài nguyên Máy chủ ảo (Instance CRUD, Cập nhật trạng thái CPU/Status & Validation).
+    3. **`client-service` (Port 8082):** Quản lý Khách hàng, Doanh nghiệp & Phân tích Chi phí / SLA Uptime.
+    4. **`monitoring-service` (Port 8083):** Giám sát Hạ tầng, tự động quét phát hiện sự cố (CPU cao, lỗi ERROR, ngưng hoạt động > 48h) & báo cáo tổng hợp.
+    5. **`alert-service` (Port 8084):** Quản lý Nhật ký Cảnh báo (Alert History) & đánh dấu hoàn tất xử lý (Resolve Alert).
+    6. **`llm-service` (Port 8085):** *Optional* - AI Chẩn đoán sự cố máy chủ ảo.
+  - **Cơ chế liên kết giữa các Microservice:** 
+    - Các dịch vụ liên thông dữ liệu qua **REST API / OpenFeign Client** và mạng nội bộ Docker Network (`techvalley-net`).
+    - Tất cả các Microservice kết nối tập trung đến PostgreSQL RDBMS và hiển thị Swagger UI tương tác.
+- **Kiến trúc mã nguồn:** RESTful Web API (Layered Microservice: Controller - Service - Repository - Entity).
 - **Xác thực & Phân quyền:** JSON Web Token (JWT) Stateless Authentication + Role-Based Access Control (RBAC).
 - **Cơ sở dữ liệu & Công cụ:** **PostgreSQL (Relational Database Management System - RDBMS)**.
   - *Công cụ quản trị:* **pgAdmin 4** được sử dụng làm GUI tool chính để trực quan hóa Schemas/Tables, kiểm tra cấu trúc Bảng, quản lý Khóa chính/Khóa ngoại (Indexes & Foreign Keys) và thực thi các truy vấn SQL (SQL Aggregations).
-- **Tài liệu API:** OpenAPI 3.0 / Swagger Documentation.
+- **Tài liệu API:** OpenAPI 3.0 / Swagger UI Documentation độc lập cho từng Microservice.
 - **Tích hợp LLM:** OpenAI API / Anthropic Claude API / Gemini API wrapper service.
 
 ---
