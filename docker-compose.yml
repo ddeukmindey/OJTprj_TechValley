@@ -53,6 +53,23 @@ services:
       dockerfile: cloud-monitor-service/Dockerfile
     container_name: cloud-monitor-service
     ports:
+      - "8086:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_USERNAME=techvalley_admin
+      - SPRING_DATASOURCE_PASSWORD=password123
+    depends_on:
+      - postgres-db
+    networks:
+      - techvalley-net
+
+  # 4. Instance Microservice (Phan Thị Cẩm Ly)
+  instance-service:
+    build:
+      context: .
+      dockerfile: instance-service/Dockerfile
+    container_name: instance-service
+    ports:
       - "8081:8081"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
@@ -63,27 +80,68 @@ services:
     networks:
       - techvalley-net
 
-  # 4. LLM Service (Spring Boot)
+  # 5. Client Microservice (Trịnh Lương Việt)
+  client-service:
+    build:
+      context: .
+      dockerfile: client-service/Dockerfile
+    container_name: client-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_USERNAME=techvalley_admin
+      - SPRING_DATASOURCE_PASSWORD=password123
+    depends_on:
+      - postgres-db
+    networks:
+      - techvalley-net
+
+  # 6. Monitoring Microservice (Thân Đức Minh)
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: monitoring-service/Dockerfile
+    container_name: monitoring-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_USERNAME=techvalley_admin
+      - SPRING_DATASOURCE_PASSWORD=password123
+    depends_on:
+      - postgres-db
+    networks:
+      - techvalley-net
+
+  # 7. Alert Microservice (Lê Thị Thuý Hằng)
+  alert-service:
+    build:
+      context: .
+      dockerfile: alert-service/Dockerfile
+    container_name: alert-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_USERNAME=techvalley_admin
+      - SPRING_DATASOURCE_PASSWORD=password123
+    depends_on:
+      - postgres-db
+    networks:
+      - techvalley-net
+
+  # 8. LLM Service (Spring Boot)
   llm-service:
     build:
       context: .
       dockerfile: llm-service/Dockerfile
     container_name: llm-service
     ports:
-      - "8082:8082"
+      - "8085:8082"
     networks:
       - techvalley-net
 
-  # 5. Frontend Demo (Nginx Web Server)
-  frontend-demo:
-    build: ./frontend-demo
-    container_name: frontend-demo
-    ports:
-      - "80:80"
-    depends_on:
-      - auth-gateway-service
-    networks:
-      - techvalley-net
 
 networks:
   techvalley-net:

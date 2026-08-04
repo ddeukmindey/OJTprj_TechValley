@@ -1,6 +1,6 @@
 # Hướng dẫn cấu trúc các module
 
-Mọi module đều theo cùng cấu trúc. (tức là với thư mục alert, client, cost, instance)
+Mọi module đều theo cùng cấu trúc. (tức là với thư mục monitoring, alert, client, cost, instance)
 
 ```
 module

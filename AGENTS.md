@@ -40,7 +40,35 @@ Khi khởi tạo mã nguồn giao diện (Frontend Code), thiết kế component
 ---
 
 ## 2. QUY CHUẨN KIẾN TRÚC TẦNG BACKEND (LAYERED ARCHITECTURE GUIDELINE)
-Tất cả mã nguồn Backend cho **Cloud Instance Monitoring System** phải tuân thủ nghiêm ngặt mô hình kiến trúc phân tầng (Layered Architecture): `Controller -> Service -> Repository -> Entity/Model`, chi tiết tại [specification_OJTprj.md](file:///d:/OTJprj_TechValley/specification_OJTprj.md).
+Tất cả mã nguồn Backend cho **Cloud Instance Monitoring System** phải tuân thủ nghiêm ngặt mô hình kiến trúc phân tầng (Layered Architecture): `Controller -> Service -> Repository -> Entity/Model`, chi tiết tại [specification_OJTprj.md](file:///d:/OTJprj_TechValley/specification_OJTprj.md) và [03_Project_Module_Guide.md](file:///d:/OTJprj_TechValley/03_Project_Module_Guide.md).
+
+### Cấu trúc Package chuẩn cho các Module (Standard Module Directory Structure):
+Mọi module nghiệp vụ (`instance`, `client`, `alert`, `cost`, `monitoring`, `llm`) đều phải tuân thủ cấu trúc package đồng nhất:
+```text
+module_name/
+├── controller/             # REST API Endpoints
+├── dto/
+│   ├── request/            # Request DTOs từ client
+│   └── response/           # Response DTOs trả về client
+├── entity/                 # Cấu trúc bảng DB (không cần tạo lại thư mục entity nếu file Java đã nằm sẵn ở mức package tương ứng)
+├── repository/             # Truy cập DB (Spring Data JPA)
+├── service/
+│   └── impl/               # Business Logic & Interfaces
+├── exception/              # Custom Exceptions của module
+├── mapper/                 # Chuyển đổi Entity ↔ DTO
+└── specification/          # Query linh hoạt (Filter, Search, Sort)
+```
+
+### Quy trình 8 bước phát triển Module (Development Workflow Order):
+Khi triển khai tính năng hoặc module mới, bắt buộc tuân theo đúng thứ tự 8 bước:
+1. **Entity**: Khai báo/xác nhận mapping Entity với DB PostgreSQL.
+2. **Repository**: Viết Spring Data JPA Repository.
+3. **DTO**: Khai báo các Request DTO (validation `@Valid`) và Response DTO.
+4. **Service**: Định nghĩa Interface Service và Class `ServiceImpl` chứa 100% logic nghiệp vụ.
+5. **Controller**: Tạo REST API Controller nhận request và trả về chuẩn API Envelope.
+6. **Exception**: Khai báo Custom Exception và xử lý lỗi riêng cho module.
+7. **Security**: Cấu hình phân quyền API (JWT / RBAC role `ADMIN`, `CLIENT_MANAGER`).
+8. **Test**: Viết Unit Test và Integration Test kiểm thử.
 
 ### Ràng buộc trách nhiệm giữa các tầng (Layer Separation Rules):
 1. **Controller Layer (REST API Endpoints)**:
@@ -62,6 +90,7 @@ Tất cả mã nguồn Backend cho **Cloud Instance Monitoring System** phải t
 4. **Entity / Model Layer (Data Schema Definitions)**:
    - Định nghĩa cấu trúc Entity `@Entity` `@Table` mapping 1:1 với 5 Bảng PostgreSQL (`members`, `clients`, `instances`, `alerts`, `cost_snapshots`).
    - Đảm bảo các thuộc tính bắt buộc, định dạng kiểu dữ liệu (Long/BIGINT, String/VARCHAR, Double/DOUBLE PRECISION, Boolean, Timestamp/Date) và trường audit (`createdAt`, `updatedAt`, `lastUpdated`).
+
 
 ---
 
