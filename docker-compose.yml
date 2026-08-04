@@ -142,18 +142,6 @@ services:
     networks:
       - techvalley-net
 
-  # 9. Frontend Demo (Nginx Web Server)
-  frontend-demo:
-    build: ./frontend-demo
-    container_name: frontend-demo
-    ports:
-      - "80:80"
-      - "3000:80"
-      - "8088:80"
-    depends_on:
-      - auth-gateway-service
-    networks:
-      - techvalley-net
 
 networks:
   techvalley-net:
