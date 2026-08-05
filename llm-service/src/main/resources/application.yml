@@ -1,0 +1,12 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: llm-service
+
+springdoc:
+  packagesToScan: com.techvalley.llm
+
+jwt:
+  secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
