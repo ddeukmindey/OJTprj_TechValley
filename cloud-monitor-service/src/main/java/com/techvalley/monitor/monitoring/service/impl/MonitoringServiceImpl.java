@@ -35,9 +35,17 @@ public class MonitoringServiceImpl implements MonitoringService {
     private static final Float CPU_WARNING_THRESHOLD = 80.0f;
     private static final int LONG_STOPPED_HOURS = 48;
 
-    private List<Long> getManagedClientIdsIfManager() {
+    private UserContextInfo validateAndGetUserContext() {
         UserContextInfo user = UserContext.get();
-        if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
+        if (user == null) {
+            throw new com.techvalley.monitor.monitoring.exception.AccessDeniedException("Người dùng chưa được xác thực. Vui lòng cung cấp JWT Token hợp lệ!");
+        }
+        return user;
+    }
+
+    private List<Long> getManagedClientIdsIfManager() {
+        UserContextInfo user = validateAndGetUserContext();
+        if ("CLIENT_MANAGER".equals(user.getRole())) {
             Long managerId = user.getMemberId();
             List<Client> clients = clientRepository.findByManagerId(managerId);
             return clients.stream().map(Client::getId).toList();

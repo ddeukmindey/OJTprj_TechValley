@@ -37,6 +37,12 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(com.techvalley.monitor.monitoring.exception.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(com.techvalley.monitor.monitoring.exception.AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(401, ex.getMessage()));
+    }
+
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
