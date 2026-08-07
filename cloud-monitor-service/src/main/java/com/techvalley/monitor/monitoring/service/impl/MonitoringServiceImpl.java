@@ -2,7 +2,10 @@ package com.techvalley.monitor.monitoring.service.impl;
 
 import com.techvalley.monitor.alert.Alert;
 import com.techvalley.monitor.alert.repository.AlertRepository;
+import com.techvalley.monitor.client.Client;
 import com.techvalley.monitor.client.repository.ClientRepository;
+import com.techvalley.monitor.common.security.UserContext;
+import com.techvalley.monitor.common.security.UserContextInfo;
 import com.techvalley.monitor.enums.AlertType;
 import com.techvalley.monitor.enums.InstanceStatus;
 import com.techvalley.monitor.instance.Instance;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,10 +35,35 @@ public class MonitoringServiceImpl implements MonitoringService {
     private static final Float CPU_WARNING_THRESHOLD = 80.0f;
     private static final int LONG_STOPPED_HOURS = 48;
 
+    private UserContextInfo validateAndGetUserContext() {
+        UserContextInfo user = UserContext.get();
+        if (user == null) {
+            throw new com.techvalley.monitor.monitoring.exception.AccessDeniedException("Người dùng chưa được xác thực. Vui lòng cung cấp JWT Token hợp lệ!");
+        }
+        return user;
+    }
+
+    private List<Long> getManagedClientIdsIfManager() {
+        UserContextInfo user = validateAndGetUserContext();
+        if ("CLIENT_MANAGER".equals(user.getRole())) {
+            Long managerId = user.getMemberId();
+            List<Client> clients = clientRepository.findByManagerId(managerId);
+            return clients.stream().map(Client::getId).toList();
+        }
+        return null;
+    }
+
     @Override
     @Transactional
     public List<MonitoringInstanceResponse> getWarnings() {
-        List<Instance> instances = instanceRepository.findByCpuUsageGreaterThanEqual(CPU_WARNING_THRESHOLD);
+        List<Long> managedClientIds = getManagedClientIdsIfManager();
+        List<Instance> instances;
+        if (managedClientIds != null) {
+            if (managedClientIds.isEmpty()) return Collections.emptyList();
+            instances = instanceRepository.findByClientIdInAndCpuUsageGreaterThanEqual(managedClientIds, CPU_WARNING_THRESHOLD);
+        } else {
+            instances = instanceRepository.findByCpuUsageGreaterThanEqual(CPU_WARNING_THRESHOLD);
+        }
         instances.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.CPU_HIGH, "Tải CPU cao bất thường: " + i.getCpuUsage() + "%"));
 
         return instances.stream()
@@ -45,7 +74,14 @@ public class MonitoringServiceImpl implements MonitoringService {
     @Override
     @Transactional
     public List<MonitoringInstanceResponse> getErrors() {
-        List<Instance> instances = instanceRepository.findByStatus(InstanceStatus.ERROR);
+        List<Long> managedClientIds = getManagedClientIdsIfManager();
+        List<Instance> instances;
+        if (managedClientIds != null) {
+            if (managedClientIds.isEmpty()) return Collections.emptyList();
+            instances = instanceRepository.findByClientIdInAndStatus(managedClientIds, InstanceStatus.ERROR);
+        } else {
+            instances = instanceRepository.findByStatus(InstanceStatus.ERROR);
+        }
         instances.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.ERROR_DETECTED, "Sự cố máy chủ: Instance đang ở trạng thái ERROR"));
 
         return instances.stream()
@@ -57,8 +93,17 @@ public class MonitoringServiceImpl implements MonitoringService {
     @Transactional
     public List<MonitoringInstanceResponse> getLongStopped() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(LONG_STOPPED_HOURS);
+        List<Long> managedClientIds = getManagedClientIdsIfManager();
 
-        List<Instance> longStopped = instanceRepository.findByStatus(InstanceStatus.STOPPED).stream()
+        List<Instance> baseList;
+        if (managedClientIds != null) {
+            if (managedClientIds.isEmpty()) return Collections.emptyList();
+            baseList = instanceRepository.findByClientIdInAndStatus(managedClientIds, InstanceStatus.STOPPED);
+        } else {
+            baseList = instanceRepository.findByStatus(InstanceStatus.STOPPED);
+        }
+
+        List<Instance> longStopped = baseList.stream()
                 .filter(i -> {
                     LocalDateTime checkTime = i.getUpdateAt() != null ? i.getUpdateAt() : i.getLauncheAt();
                     return checkTime != null && checkTime.isBefore(threshold);
@@ -75,21 +120,52 @@ public class MonitoringServiceImpl implements MonitoringService {
     @Override
     @Transactional(readOnly = true)
     public MonitoringReportResponse getOverviewReport() {
-        List<Instance> allInstances = instanceRepository.findAll();
-        long totalCount = allInstances.size();
+        List<Long> managedClientIds = getManagedClientIdsIfManager();
 
-        long runningCount = instanceRepository.countByStatus(InstanceStatus.RUNNING);
-        long stoppedCount = instanceRepository.countByStatus(InstanceStatus.STOPPED);
-        long errorCount = instanceRepository.countByStatus(InstanceStatus.ERROR);
+        List<Instance> targetInstances;
+        long totalCount;
+        long runningCount;
+        long stoppedCount;
+        long errorCount;
+        long unresolvedAlerts;
+        long totalClients;
 
-        double avgCpu = allInstances.stream()
+        if (managedClientIds != null) {
+            if (managedClientIds.isEmpty()) {
+                return MonitoringReportResponse.builder()
+                        .totalInstances(0)
+                        .runningInstances(0)
+                        .stoppedInstances(0)
+                        .errorInstances(0)
+                        .averageCpuUsage(0.0)
+                        .unresolvedAlerts(0)
+                        .totalClients(0)
+                        .build();
+            }
+            targetInstances = instanceRepository.findByClientIdIn(managedClientIds);
+            totalCount = targetInstances.size();
+            runningCount = instanceRepository.countByClientIdInAndStatus(managedClientIds, InstanceStatus.RUNNING);
+            stoppedCount = instanceRepository.countByClientIdInAndStatus(managedClientIds, InstanceStatus.STOPPED);
+            errorCount = instanceRepository.countByClientIdInAndStatus(managedClientIds, InstanceStatus.ERROR);
+
+            List<Long> instanceIds = targetInstances.stream().map(Instance::getId).toList();
+            unresolvedAlerts = instanceIds.isEmpty() ? 0 : alertRepository.countByInstanceIdInAndIsResolved(instanceIds, 0);
+            totalClients = managedClientIds.size();
+        } else {
+            targetInstances = instanceRepository.findAll();
+            totalCount = targetInstances.size();
+            runningCount = instanceRepository.countByStatus(InstanceStatus.RUNNING);
+            stoppedCount = instanceRepository.countByStatus(InstanceStatus.STOPPED);
+            errorCount = instanceRepository.countByStatus(InstanceStatus.ERROR);
+            unresolvedAlerts = alertRepository.countByIsResolved(0);
+            totalClients = clientRepository.count();
+        }
+
+        double avgCpu = targetInstances.stream()
                 .filter(i -> i.getCpuUsage() != null)
                 .mapToDouble(Instance::getCpuUsage)
                 .average()
                 .orElse(0.0);
-
-        long unresolvedAlerts = alertRepository.countByIsResolved(0);
-        long totalClients = clientRepository.count();
 
         return MonitoringReportResponse.builder()
                 .totalInstances(totalCount)

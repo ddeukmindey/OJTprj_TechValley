@@ -1,0 +1,24 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: llm-service
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+jwt:
+  secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
+
+# --- CẤU HÌNH LLM---
+
+llm:
+  provider: gemini
+  api-key: ${GEMINI_API_KEY:YOUR_GEMINI_API_KEY}
+  model: gemini-1.5-flash
+  timeout-ms: 8000
+  mock-enabled: true # Nếu Key hết quota hoặc mất mạng -> tự động fallback sang Mock

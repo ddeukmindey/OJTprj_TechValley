@@ -13,5 +13,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     Page<Client> findByManagerId(Long managerId, Pageable pageable);
 
+    java.util.List<Client> findByManagerId(Long managerId);
+
     Page<Client> findByManagerIdAndClientNameContainingIgnoreCase(Long managerId, String clientName, Pageable pageable);
 }

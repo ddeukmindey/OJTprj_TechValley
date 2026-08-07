@@ -16,6 +16,7 @@ services:
     networks:
       - techvalley-net
   
+  # 2. Database Admin GUI (pgAdmin 4)
   pgadmin:
     image: dpage/pgadmin4
     container_name: techvalley-pgadmin
@@ -29,7 +30,7 @@ services:
     networks:
       - techvalley-net
 
-  # 2. Auth & Gateway Service (Spring Boot)
+  # 3. Auth & Gateway Service (Trần Bảo Châu)
   auth-gateway-service:
     build:
       context: .
@@ -37,23 +38,6 @@ services:
     container_name: auth-gateway-service
     ports:
       - "8080:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
-      - SPRING_DATASOURCE_USERNAME=techvalley_admin
-      - SPRING_DATASOURCE_PASSWORD=password123
-    depends_on:
-      - postgres-db
-    networks:
-      - techvalley-net
-
-  # 3. Core Cloud Monitor Service (Spring Boot)
-  cloud-monitor-service:
-    build:
-      context: .
-      dockerfile: cloud-monitor-service/Dockerfile
-    container_name: cloud-monitor-service
-    ports:
-      - "8086:8081"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
@@ -138,10 +122,9 @@ services:
       dockerfile: llm-service/Dockerfile
     container_name: llm-service
     ports:
-      - "8085:8082"
+      - "8085:8085"
     networks:
       - techvalley-net
-
 
 networks:
   techvalley-net:

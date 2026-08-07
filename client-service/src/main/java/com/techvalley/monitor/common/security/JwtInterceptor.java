@@ -1,23 +1,31 @@
 package com.techvalley.monitor.common.security;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @Value("${jwt.secret:3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk}")
     private String secret;
+
+    private SecretKey secretKey;
+
+    @PostConstruct
+    public void init() {
+        secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -33,24 +41,28 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         String token = authHeader.substring(7).trim();
-        if (!verifyToken(token)) {
-            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token JWT không hợp lệ hoặc đã hết hạn");
-            return false;
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7).trim();
         }
 
         try {
-            String[] parts = token.split("\\.");
-            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-            JsonNode payload = objectMapper.readTree(payloadJson);
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(secretKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
 
-            Long memberId = payload.has("memberId") ? payload.get("memberId").asLong() : null;
-            String email = payload.has("sub") ? payload.get("sub").asText() : "";
-            String role = payload.has("role") ? payload.get("role").asText() : "";
+            Long memberId = claims.get("memberId", Long.class);
+            String email = claims.getSubject();
+            String role = claims.get("role", String.class);
 
             UserContext.set(new UserContextInfo(memberId, email, role));
             return true;
+        } catch (ExpiredJwtException e) {
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token JWT đã hết hạn");
+            return false;
         } catch (Exception e) {
-            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Lỗi giải mã thông tin token");
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token JWT không hợp lệ: " + e.getMessage());
             return false;
         }
     }
@@ -58,42 +70,6 @@ public class JwtInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
         UserContext.clear();
-    }
-
-    private boolean verifyToken(String token) {
-        try {
-            String[] parts = token.split("\\.");
-            if (parts.length != 3) {
-                return false;
-            }
-
-            // Verify signature
-            String data = parts[0] + "." + parts[1];
-            javax.crypto.Mac hmac = javax.crypto.Mac.getInstance("HmacSHA256");
-            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            hmac.init(secretKey);
-            byte[] hash = hmac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            String signature = Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
-            
-            if (!signature.equals(parts[2])) {
-                return false;
-            }
-
-            // Verify expiration
-            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-            JsonNode payload = objectMapper.readTree(payloadJson);
-            if (payload.has("exp")) {
-                long exp = payload.get("exp").asLong();
-                // exp is in seconds, System.currentTimeMillis() is in milliseconds
-                if (exp * 1000 < System.currentTimeMillis()) {
-                    return false;
-                }
-            }
-
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private void sendErrorResponse(HttpServletResponse response, int status, String message) throws Exception {

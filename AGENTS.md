@@ -91,6 +91,11 @@ Khi triển khai tính năng hoặc module mới, bắt buộc tuân theo đúng
    - Định nghĩa cấu trúc Entity `@Entity` `@Table` mapping 1:1 với 5 Bảng PostgreSQL (`members`, `clients`, `instances`, `alerts`, `cost_snapshots`).
    - Đảm bảo các thuộc tính bắt buộc, định dạng kiểu dữ liệu (Long/BIGINT, String/VARCHAR, Double/DOUBLE PRECISION, Boolean, Timestamp/Date) và trường audit (`createdAt`, `updatedAt`, `lastUpdated`).
 
+### Quy tắc Tự động Sinh Mã Nguồn (Code Generation Libraries Rule):
+- **BẮT BUỘC sử dụng Lombok & Thư viện Tự động sinh Code:**
+  - 100% các Class Entity, DTO, Response, Request MUST sử dụng các annotation của **Lombok** (`@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@Getter`, `@Setter`) thay vì tự viết thủ công các hàm getter/setter/constructor/builder rườm rà.
+  - 100% các Class Service, Controller, Component MUST sử dụng `@Slf4j` cho Logging và `@RequiredArgsConstructor` (hoặc `@Autowired`) cho Dependency Injection. Tuyệt đối KHÔNG khai báo thủ công `LoggerFactory.getLogger(...)` hay viết tay constructor boilerplate trừ trường hợp đặc biệt bắt buộc.
+
 
 ---
 

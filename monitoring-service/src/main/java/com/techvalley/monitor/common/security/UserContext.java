@@ -8,11 +8,7 @@ public class UserContext {
     }
 
     public static UserContextInfo get() {
-        UserContextInfo info = CONTEXT.get();
-        if (info == null) {
-            return new UserContextInfo(1L, "admin@techvalley.com", "ADMIN");
-        }
-        return info;
+        return CONTEXT.get();
     }
 
     public static void clear() {
