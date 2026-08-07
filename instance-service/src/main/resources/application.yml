@@ -5,7 +5,7 @@ spring:
   application:
     name: instance-service
   datasource:
-    url: jdbc:postgresql://postgres-db:5432/techvalley_db
+    url: jdbc:postgresql://postgres-instance:5432/techvalley_instance
     username: techvalley_admin
     password: password123
     driver-class-name: org.postgresql.Driver

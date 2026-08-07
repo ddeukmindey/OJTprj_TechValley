@@ -1,22 +1,63 @@
 version: '3.8'
 
 services:
-  # 1. Database Postgres
-  postgres-db:
+  # ==== DATABASE — mỗi service 1 Postgres + 1 volume riêng ====
+  postgres-auth:
     image: postgres:15-alpine
-    container_name: techvalley-postgres
+    container_name: techvalley-postgres-auth
     environment:
       POSTGRES_USER: techvalley_admin
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: techvalley_db
+      POSTGRES_DB: techvalley_auth
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_auth:/var/lib/postgresql/data
     networks:
       - techvalley-net
-  
-  # 2. Database Admin GUI (pgAdmin 4)
+
+  postgres-instance:
+    image: postgres:15-alpine
+    container_name: techvalley-postgres-instance
+    environment:
+      POSTGRES_USER: techvalley_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: techvalley_instance
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_instance:/var/lib/postgresql/data
+    networks:
+      - techvalley-net
+
+  postgres-client:
+    image: postgres:15-alpine
+    container_name: techvalley-postgres-client
+    environment:
+      POSTGRES_USER: techvalley_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: techvalley_client
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata_client:/var/lib/postgresql/data
+    networks:
+      - techvalley-net
+
+  postgres-alert:
+    image: postgres:15-alpine
+    container_name: techvalley-postgres-alert
+    environment:
+      POSTGRES_USER: techvalley_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: techvalley_alert
+    ports:
+      - "5436:5432"
+    volumes:
+      - pgdata_alert:/var/lib/postgresql/data
+    networks:
+      - techvalley-net
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: techvalley-pgadmin
@@ -26,11 +67,14 @@ services:
     ports:
       - "5050:80"
     depends_on:
-      - postgres-db
+      - postgres-auth
+      - postgres-instance
+      - postgres-client
+      - postgres-alert
     networks:
       - techvalley-net
 
-  # 3. Auth & Gateway Service (Trần Bảo Châu)
+  # ==== SERVICES ====
   auth-gateway-service:
     build:
       context: .
@@ -39,15 +83,14 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/techvalley_auth
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
       - SPRING_DATASOURCE_PASSWORD=password123
     depends_on:
-      - postgres-db
+      - postgres-auth
     networks:
       - techvalley-net
 
-  # 4. Instance Microservice (Phan Thị Cẩm Ly)
   instance-service:
     build:
       context: .
@@ -56,15 +99,14 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-instance:5432/techvalley_instance
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
       - SPRING_DATASOURCE_PASSWORD=password123
     depends_on:
-      - postgres-db
+      - postgres-instance
     networks:
       - techvalley-net
 
-  # 5. Client Microservice (Trịnh Lương Việt)
   client-service:
     build:
       context: .
@@ -73,15 +115,18 @@ services:
     ports:
       - "8082:8082"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-client:5432/techvalley_client
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
       - SPRING_DATASOURCE_PASSWORD=password123
+      - INSTANCE_SERVICE_URL=http://instance-service:8081
+      - ALERT_SERVICE_URL=http://alert-service:8084
     depends_on:
-      - postgres-db
+      - postgres-client
+      - instance-service
+      - alert-service
     networks:
       - techvalley-net
 
-  # 6. Monitoring Microservice (Thân Đức Minh)
   monitoring-service:
     build:
       context: .
@@ -90,15 +135,16 @@ services:
     ports:
       - "8083:8083"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
-      - SPRING_DATASOURCE_USERNAME=techvalley_admin
-      - SPRING_DATASOURCE_PASSWORD=password123
+      - INSTANCE_SERVICE_URL=http://instance-service:8081
+      - ALERT_SERVICE_URL=http://alert-service:8084
+      - CLIENT_SERVICE_URL=http://client-service:8082
     depends_on:
-      - postgres-db
+      - instance-service
+      - alert-service
+      - client-service
     networks:
       - techvalley-net
 
-  # 7. Alert Microservice (Lê Thị Thuý Hằng)
   alert-service:
     build:
       context: .
@@ -107,15 +153,14 @@ services:
     ports:
       - "8084:8084"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-alert:5432/techvalley_alert
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
       - SPRING_DATASOURCE_PASSWORD=password123
     depends_on:
-      - postgres-db
+      - postgres-alert
     networks:
       - techvalley-net
 
-  # 8. LLM Service (Spring Boot)
   llm-service:
     build:
       context: .
@@ -130,5 +175,10 @@ networks:
   techvalley-net:
     driver: bridge
 
+# 4 volume riêng biệt = 4 service không đụng dữ liệu của nhau,
+# và data KHÔNG mất khi container bị xóa/rebuild (chỉ mất khi bạn tự `docker volume rm`)
 volumes:
-  pgdata:
+  pgdata_auth:
+  pgdata_instance:
+  pgdata_client:
+  pgdata_alert:

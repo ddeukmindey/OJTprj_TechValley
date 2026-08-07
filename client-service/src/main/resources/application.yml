@@ -5,7 +5,7 @@ spring:
   application:
     name: client-service
   datasource:
-    url: jdbc:postgresql://postgres-db:5432/techvalley_db
+    url: jdbc:postgresql://postgres-client:5432/techvalley_client
     username: techvalley_admin
     password: password123
     driver-class-name: org.postgresql.Driver
@@ -16,6 +16,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+instance-service:
+  base-url: ${INSTANCE_SERVICE_URL:http://localhost:8081}
+alert-service:
+  base-url: ${ALERT_SERVICE_URL:http://localhost:8084}
 
 springdoc:
   packagesToScan: com.techvalley.monitor.client
