@@ -10,3 +10,16 @@ springdoc:
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
+
+llm:
+  provider: ${LLM_PROVIDER:mock}
+  api-key: ${LLM_API_KEY:dummy_key}
+  model: ${LLM_MODEL:gemini-flash-latest}
+  timeout-ms: 8000
+  mock-enabled: true
+
+services:
+  instance:
+    url: http://localhost:8081
+  alert:
+    url: http://localhost:8084
