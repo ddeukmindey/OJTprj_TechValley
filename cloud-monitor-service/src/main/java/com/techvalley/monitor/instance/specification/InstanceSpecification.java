@@ -14,6 +14,13 @@ public class InstanceSpecification {
         };
     }
 
+    public static Specification<Instance> hasClientIdIn(java.util.List<Long> clientIds) {
+        return (root, query, cb) -> {
+            if (clientIds == null || clientIds.isEmpty()) return null;
+            return root.get("clientId").in(clientIds);
+        };
+    }
+
     public static Specification<Instance> hasStatus(InstanceStatus status) {
         return (root, query, cb) -> {
             if (status == null) return null;

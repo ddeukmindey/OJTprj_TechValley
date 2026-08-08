@@ -4,8 +4,18 @@ import com.techvalley.monitor.enums.InstanceStatus;
 import com.techvalley.monitor.instance.Instance;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
+import java.util.List;
 
 public class InstanceSpecification {
+
+    public static Specification<Instance> hasClientIdIn(List<Long> clientIds) {
+        return (root, query, criteriaBuilder) -> {
+            if (clientIds == null || clientIds.isEmpty()) {
+                return criteriaBuilder.conjunction();
+            }
+            return root.get("clientId").in(clientIds);
+        };
+    }
 
     public static Specification<Instance> hasClientId(Long clientId) {
         return (root, query, cb) -> {
