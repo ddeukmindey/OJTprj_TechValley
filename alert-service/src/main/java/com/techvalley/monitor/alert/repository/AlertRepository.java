@@ -14,4 +14,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long>, JpaSpecific
     List<Alert> findByInstanceId(Long instanceId);
     Optional<Alert> findFirstByInstanceIdAndAlertTypeAndIsResolved(Long instanceId, AlertType alertType, Integer isResolved);
     long countByIsResolved(Integer isResolved);
+
+    long countByInstanceIdInAndIsResolved(List<Long> instanceIds, Integer isResolved);
+
+    List<Alert> findByInstanceIdInAndAlertTypeNot(List<Long> instanceIds, AlertType excludedType);
 }

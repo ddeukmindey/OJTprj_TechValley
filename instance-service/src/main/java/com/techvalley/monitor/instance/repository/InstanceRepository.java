@@ -19,4 +19,12 @@ public interface InstanceRepository extends JpaRepository<Instance, Long>, JpaSp
     List<Instance> findByStatusAndUpdateAtBefore(InstanceStatus status, LocalDateTime thresholdDate);
 
     long countByStatus(InstanceStatus status);
+
+    List<Instance> findByClientIdInAndCpuUsageGreaterThanEqual(List<Long> clientIds, Float cpuUsageThreshold);
+
+    List<Instance> findByClientIdInAndStatus(List<Long> clientIds, InstanceStatus status);
+
+    List<Instance> findByClientIdIn(List<Long> clientIds);
+
+    long countByClientIdInAndStatus(List<Long> clientIds, InstanceStatus status);
 }

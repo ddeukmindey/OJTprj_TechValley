@@ -1,35 +1,33 @@
 package com.techvalley.monitor.monitoring.service.impl;
 
-import com.techvalley.monitor.alert.Alert;
-import com.techvalley.monitor.alert.repository.AlertRepository;
-import com.techvalley.monitor.client.Client;
-import com.techvalley.monitor.client.repository.ClientRepository;
 import com.techvalley.monitor.common.security.UserContext;
 import com.techvalley.monitor.common.security.UserContextInfo;
-import com.techvalley.monitor.enums.AlertType;
-import com.techvalley.monitor.enums.InstanceStatus;
-import com.techvalley.monitor.instance.Instance;
-import com.techvalley.monitor.instance.repository.InstanceRepository;
+import com.techvalley.monitor.monitoring.dto.client.ClientDto;
+import com.techvalley.monitor.monitoring.dto.client.CreateAlertRequest;
+import com.techvalley.monitor.monitoring.dto.client.InstanceDto;
 import com.techvalley.monitor.monitoring.dto.response.MonitoringInstanceResponse;
 import com.techvalley.monitor.monitoring.dto.response.MonitoringReportResponse;
 import com.techvalley.monitor.monitoring.mapper.MonitoringMapper;
 import com.techvalley.monitor.monitoring.service.MonitoringService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class MonitoringServiceImpl implements MonitoringService {
 
-    private final InstanceRepository instanceRepository;
-    private final AlertRepository alertRepository;
-    private final ClientRepository clientRepository;
+    @Qualifier("instanceServiceClient")
+    private final WebClient instanceServiceClient;
+    @Qualifier("alertServiceClient")
+    private final WebClient alertServiceClient;
+    @Qualifier("clientServiceClient")
+    private final WebClient clientServiceClient;
     private final MonitoringMapper monitoringMapper;
 
     private static final Float CPU_WARNING_THRESHOLD = 80.0f;
@@ -38,7 +36,8 @@ public class MonitoringServiceImpl implements MonitoringService {
     private UserContextInfo validateAndGetUserContext() {
         UserContextInfo user = UserContext.get();
         if (user == null) {
-            throw new com.techvalley.monitor.monitoring.exception.AccessDeniedException("Người dùng chưa được xác thực. Vui lòng cung cấp JWT Token hợp lệ!");
+            throw new com.techvalley.monitor.monitoring.exception.AccessDeniedException(
+                    "Người dùng chưa được xác thực. Vui lòng cung cấp JWT Token hợp lệ!");
         }
         return user;
     }
@@ -47,24 +46,38 @@ public class MonitoringServiceImpl implements MonitoringService {
         UserContextInfo user = validateAndGetUserContext();
         if ("CLIENT_MANAGER".equals(user.getRole())) {
             Long managerId = user.getMemberId();
-            List<Client> clients = clientRepository.findByManagerId(managerId);
-            return clients.stream().map(Client::getId).toList();
+            List<ClientDto> clients = clientServiceClient.get()
+                    .uri("/internal/clients/by-manager/{managerId}", managerId)
+                    .retrieve()
+                    .bodyToFlux(ClientDto.class)
+                    .collectList()
+                    .block();
+            return clients.stream().map(ClientDto::getId).toList();
         }
         return null;
     }
 
+    private List<InstanceDto> fetchInstances(String path, List<Long> clientIds, Object... extraParams) {
+        return instanceServiceClient.get()
+                .uri(uriBuilder -> {
+                    var b = uriBuilder.path(path);
+                    if (clientIds != null) b.queryParam("clientIds", clientIds);
+                    return b.build();
+                })
+                .retrieve()
+                .bodyToFlux(InstanceDto.class)
+                .collectList()
+                .block();
+    }
+
     @Override
-    @Transactional
     public List<MonitoringInstanceResponse> getWarnings() {
         List<Long> managedClientIds = getManagedClientIdsIfManager();
-        List<Instance> instances;
-        if (managedClientIds != null) {
-            if (managedClientIds.isEmpty()) return Collections.emptyList();
-            instances = instanceRepository.findByClientIdInAndCpuUsageGreaterThanEqual(managedClientIds, CPU_WARNING_THRESHOLD);
-        } else {
-            instances = instanceRepository.findByCpuUsageGreaterThanEqual(CPU_WARNING_THRESHOLD);
-        }
-        instances.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.CPU_HIGH, "Tải CPU cao bất thường: " + i.getCpuUsage() + "%"));
+        if (managedClientIds != null && managedClientIds.isEmpty()) return Collections.emptyList();
+
+        List<InstanceDto> instances = fetchInstances("/internal/instances/high-cpu", managedClientIds);
+        instances.forEach(i -> createAlertIfAbsent(i.getId(), "CPU_HIGH",
+                "Tải CPU cao bất thường: " + i.getCpuUsage() + "%"));
 
         return instances.stream()
                 .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: CPU usage >= 80%"))
@@ -72,17 +85,13 @@ public class MonitoringServiceImpl implements MonitoringService {
     }
 
     @Override
-    @Transactional
     public List<MonitoringInstanceResponse> getErrors() {
         List<Long> managedClientIds = getManagedClientIdsIfManager();
-        List<Instance> instances;
-        if (managedClientIds != null) {
-            if (managedClientIds.isEmpty()) return Collections.emptyList();
-            instances = instanceRepository.findByClientIdInAndStatus(managedClientIds, InstanceStatus.ERROR);
-        } else {
-            instances = instanceRepository.findByStatus(InstanceStatus.ERROR);
-        }
-        instances.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.ERROR_DETECTED, "Sự cố máy chủ: Instance đang ở trạng thái ERROR"));
+        if (managedClientIds != null && managedClientIds.isEmpty()) return Collections.emptyList();
+
+        List<InstanceDto> instances = fetchInstances("/internal/instances/errors", managedClientIds);
+        instances.forEach(i -> createAlertIfAbsent(i.getId(), "ERROR_DETECTED",
+                "Sự cố máy chủ: Instance đang ở trạng thái ERROR"));
 
         return instances.stream()
                 .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Lỗi: Máy chủ đang gặp sự cố (ERROR)"))
@@ -90,27 +99,21 @@ public class MonitoringServiceImpl implements MonitoringService {
     }
 
     @Override
-    @Transactional
     public List<MonitoringInstanceResponse> getLongStopped() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(LONG_STOPPED_HOURS);
         List<Long> managedClientIds = getManagedClientIdsIfManager();
+        if (managedClientIds != null && managedClientIds.isEmpty()) return Collections.emptyList();
 
-        List<Instance> baseList;
-        if (managedClientIds != null) {
-            if (managedClientIds.isEmpty()) return Collections.emptyList();
-            baseList = instanceRepository.findByClientIdInAndStatus(managedClientIds, InstanceStatus.STOPPED);
-        } else {
-            baseList = instanceRepository.findByStatus(InstanceStatus.STOPPED);
-        }
-
-        List<Instance> longStopped = baseList.stream()
+        List<InstanceDto> stopped = fetchInstances("/internal/instances/stopped", managedClientIds);
+        List<InstanceDto> longStopped = stopped.stream()
                 .filter(i -> {
                     LocalDateTime checkTime = i.getUpdateAt() != null ? i.getUpdateAt() : i.getLauncheAt();
                     return checkTime != null && checkTime.isBefore(threshold);
                 })
                 .toList();
 
-        longStopped.forEach(i -> createAlertIfAbsent(i.getId(), AlertType.LONG_STOPPED, "Cảnh báo: Máy chủ ngưng hoạt động kéo dài quá 48 giờ"));
+        longStopped.forEach(i -> createAlertIfAbsent(i.getId(), "LONG_STOPPED",
+                "Cảnh báo: Máy chủ ngưng hoạt động kéo dài quá 48 giờ"));
 
         return longStopped.stream()
                 .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: Máy chủ bị tạm dừng ít nhất 48 giờ"))
@@ -118,77 +121,53 @@ public class MonitoringServiceImpl implements MonitoringService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public MonitoringReportResponse getOverviewReport() {
         List<Long> managedClientIds = getManagedClientIdsIfManager();
-
-        List<Instance> targetInstances;
-        long totalCount;
-        long runningCount;
-        long stoppedCount;
-        long errorCount;
-        long unresolvedAlerts;
-        long totalClients;
-
-        if (managedClientIds != null) {
-            if (managedClientIds.isEmpty()) {
-                return MonitoringReportResponse.builder()
-                        .totalInstances(0)
-                        .runningInstances(0)
-                        .stoppedInstances(0)
-                        .errorInstances(0)
-                        .averageCpuUsage(0.0)
-                        .unresolvedAlerts(0)
-                        .totalClients(0)
-                        .build();
-            }
-            targetInstances = instanceRepository.findByClientIdIn(managedClientIds);
-            totalCount = targetInstances.size();
-            runningCount = instanceRepository.countByClientIdInAndStatus(managedClientIds, InstanceStatus.RUNNING);
-            stoppedCount = instanceRepository.countByClientIdInAndStatus(managedClientIds, InstanceStatus.STOPPED);
-            errorCount = instanceRepository.countByClientIdInAndStatus(managedClientIds, InstanceStatus.ERROR);
-
-            List<Long> instanceIds = targetInstances.stream().map(Instance::getId).toList();
-            unresolvedAlerts = instanceIds.isEmpty() ? 0 : alertRepository.countByInstanceIdInAndIsResolved(instanceIds, 0);
-            totalClients = managedClientIds.size();
-        } else {
-            targetInstances = instanceRepository.findAll();
-            totalCount = targetInstances.size();
-            runningCount = instanceRepository.countByStatus(InstanceStatus.RUNNING);
-            stoppedCount = instanceRepository.countByStatus(InstanceStatus.STOPPED);
-            errorCount = instanceRepository.countByStatus(InstanceStatus.ERROR);
-            unresolvedAlerts = alertRepository.countByIsResolved(0);
-            totalClients = clientRepository.count();
+        if (managedClientIds != null && managedClientIds.isEmpty()) {
+            return MonitoringReportResponse.builder()
+                    .totalInstances(0).runningInstances(0).stoppedInstances(0)
+                    .errorInstances(0).averageCpuUsage(0.0)
+                    .unresolvedAlerts(0).totalClients(0).build();
         }
+
+        List<InstanceDto> targetInstances = fetchInstances("/internal/instances", managedClientIds);
+
+        long totalCount = targetInstances.size();
+        long runningCount = targetInstances.stream().filter(i -> "RUNNING".equals(i.getStatus())).count();
+        long stoppedCount = targetInstances.stream().filter(i -> "STOPPED".equals(i.getStatus())).count();
+        long errorCount = targetInstances.stream().filter(i -> "ERROR".equals(i.getStatus())).count();
+
+        List<Long> instanceIds = targetInstances.stream().map(InstanceDto::getId).toList();
+        long unresolvedAlerts = instanceIds.isEmpty() ? 0 : alertServiceClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/internal/alerts/count-unresolved")
+                        .queryParam("instanceIds", instanceIds).build())
+                .retrieve()
+                .bodyToMono(Long.class)
+                .block();
+
+        long totalClients = managedClientIds != null ? managedClientIds.size()
+                : clientServiceClient.get().uri("/internal/clients/count")
+                    .retrieve().bodyToMono(Long.class).block();
 
         double avgCpu = targetInstances.stream()
                 .filter(i -> i.getCpuUsage() != null)
-                .mapToDouble(Instance::getCpuUsage)
-                .average()
-                .orElse(0.0);
+                .mapToDouble(InstanceDto::getCpuUsage)
+                .average().orElse(0.0);
 
         return MonitoringReportResponse.builder()
-                .totalInstances(totalCount)
-                .runningInstances(runningCount)
-                .stoppedInstances(stoppedCount)
-                .errorInstances(errorCount)
+                .totalInstances(totalCount).runningInstances(runningCount)
+                .stoppedInstances(stoppedCount).errorInstances(errorCount)
                 .averageCpuUsage(Math.round(avgCpu * 100.0) / 100.0)
-                .unresolvedAlerts(unresolvedAlerts)
-                .totalClients(totalClients)
+                .unresolvedAlerts(unresolvedAlerts).totalClients(totalClients)
                 .build();
     }
 
-    /** Helper method dùng chung để kiểm tra chống trùng lặp và tạo Alert mới */
-    private void createAlertIfAbsent(Long instanceId, AlertType type, String message) {
-        Optional<Alert> existing = alertRepository.findFirstByInstanceIdAndAlertTypeAndIsResolved(instanceId, type, 0);
-        if (existing.isEmpty()) {
-            Alert alert = new Alert();
-            alert.setInstanceId(instanceId);
-            alert.setAlertType(type);
-            alert.setMessage(message);
-            alert.setIsResolved(0);
-            alert.setDetectedAt(LocalDateTime.now());
-            alertRepository.save(alert);
-        }
+    private void createAlertIfAbsent(Long instanceId, String type, String message) {
+        alertServiceClient.post()
+                .uri("/internal/alerts")
+                .bodyValue(new CreateAlertRequest(instanceId, type, message))
+                .retrieve()
+                .toBodilessEntity()
+                .block();
     }
 }

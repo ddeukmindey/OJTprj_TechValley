@@ -16,7 +16,6 @@
     <modules>
         <module>common-lib</module>
         <module>auth-gateway-service</module>
-        <module>cloud-monitor-service</module>
         <module>instance-service</module>
         <module>client-service</module>
         <module>monitoring-service</module>
