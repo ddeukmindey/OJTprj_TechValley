@@ -9,18 +9,19 @@ import com.techvalley.monitor.client.repository.ClientRepository;
 import com.techvalley.monitor.client.service.ClientService;
 import com.techvalley.monitor.enums.ContractPlan;
 import com.techvalley.monitor.enums.InstanceStatus;
-import com.techvalley.monitor.instance.Instance;
 import com.techvalley.monitor.common.security.UserContext;
 import com.techvalley.monitor.common.security.UserContextInfo;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.techvalley.monitor.client.dto.external.AlertDto;
+import com.techvalley.monitor.client.dto.external.InstanceDto;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.reactive.function.client.WebClient;
+import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +36,10 @@ public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
     private final EntityManager entityManager;
+    @Qualifier("instanceServiceClient")
+    private final WebClient instanceServiceClient;
+    @Qualifier("alertServiceClient")
+    private final WebClient alertServiceClient;
 
     private void validateAdminRole() {
         UserContextInfo user = UserContext.get();
@@ -61,10 +66,15 @@ public class ClientServiceImpl implements ClientService {
         return client;
     }
 
-    private List<Instance> findInstancesByClientId(Long clientId) {
-        return entityManager.createQuery("SELECT i FROM Instance i WHERE i.clientId = :clientId", Instance.class)
-                .setParameter("clientId", clientId)
-                .getResultList();
+    private List<InstanceDto> findInstancesByClientId(Long clientId) {
+        List<InstanceDto> result = instanceServiceClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/internal/instances")
+                        .queryParam("clientIds", clientId).build())
+                .retrieve()
+                .bodyToFlux(InstanceDto.class)
+                .collectList()
+                .block();
+        return result != null ? result : Collections.emptyList();
     }
 
     @Override
@@ -147,7 +157,7 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
-    public List<Instance> getClientInstances(Long id) {
+    public List<InstanceDto> getClientInstances(Long id) {
         getClientAndValidateAccess(id);
         return findInstancesByClientId(id);
     }
@@ -155,12 +165,12 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public ClientCostResponse getClientCost(Long id) {
         Client client = getClientAndValidateAccess(id);
-        List<Instance> instances = findInstancesByClientId(id);
+        List<InstanceDto> instances = findInstancesByClientId(id);
 
         double runningCost = 0.0;
         double stoppedCost = 0.0;
 
-        for (Instance inst : instances) {
+        for (InstanceDto inst : instances) {
             double cost = inst.getMonthlyCost() != null ? inst.getMonthlyCost() : 0.0;
             if (InstanceStatus.RUNNING.equals(inst.getStatus())) {
                 runningCost += cost;
@@ -185,7 +195,7 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public ClientCostForecastResponse getClientCostForecast(Long id) {
         Client client = getClientAndValidateAccess(id);
-        List<Instance> instances = findInstancesByClientId(id);
+        List<InstanceDto> instances = findInstancesByClientId(id);
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
@@ -201,7 +211,7 @@ public class ClientServiceImpl implements ClientService {
         double runningForecast = 0.0;
         int activeRunningInstances = 0;
 
-        for (Instance inst : instances) {
+        for (InstanceDto inst : instances) {
             double unitPrice = 50.0;
             if (inst.getInstanceType() != null) {
                 switch (inst.getInstanceType()) {
@@ -271,7 +281,7 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public ClientSlaResponse getClientSla(Long id) {
         Client client = getClientAndValidateAccess(id);
-        List<Instance> instances = findInstancesByClientId(id);
+        List<InstanceDto> instances = findInstancesByClientId(id);
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
@@ -296,18 +306,20 @@ public class ClientServiceImpl implements ClientService {
                     .build();
         }
 
-        List<Long> instanceIds = instances.stream().map(Instance::getId).collect(Collectors.toList());
+        List<Long> instanceIds = instances.stream().map(InstanceDto::getId).collect(Collectors.toList());
 
-        // Get alerts that represent downtime (exclude CPU_HIGH)
-        List<com.techvalley.monitor.alert.Alert> alerts = entityManager.createQuery(
-                "SELECT a FROM Alert a WHERE a.instanceId IN :instanceIds AND a.alertType != :cpuHigh",
-                com.techvalley.monitor.alert.Alert.class)
-                .setParameter("instanceIds", instanceIds)
-                .setParameter("cpuHigh", com.techvalley.monitor.enums.AlertType.CPU_HIGH)
-                .getResultList();
+        // Get alerts that represent downtime (exclude CPU_HIGH) — gọi qua alert-service
+        List<AlertDto> alerts = alertServiceClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/internal/alerts/downtime")
+                        .queryParam("instanceIds", instanceIds).build())
+                .retrieve()
+                .bodyToFlux(AlertDto.class)
+                .collectList()
+                .block();
+        if (alerts == null) alerts = Collections.emptyList();
 
         double totalDowntimeMinutes = 0.0;
-        for (com.techvalley.monitor.alert.Alert alert : alerts) {
+        for (AlertDto alert : alerts) {
             LocalDateTime alertStart = alert.getDetectedAt() != null ? alert.getDetectedAt() : startOfMonth;
             LocalDateTime alertEnd = alert.getResolvedAt() != null ? alert.getResolvedAt() : now;
 
@@ -320,7 +332,7 @@ public class ClientServiceImpl implements ClientService {
         }
 
         double totalExpectedMinutes = 0.0;
-        for (Instance inst : instances) {
+        for (InstanceDto inst : instances) {
             LocalDateTime launch = inst.getLauncheAt() != null ? inst.getLauncheAt() : startOfMonth;
             LocalDateTime activeStart = launch.isBefore(startOfMonth) ? startOfMonth : launch;
             if (activeStart.isBefore(now)) {

@@ -6,7 +6,7 @@ import com.techvalley.monitor.client.exception.AccessDeniedException;
 import com.techvalley.monitor.client.exception.ClientNotFoundException;
 import com.techvalley.monitor.client.service.ClientService;
 import com.techvalley.monitor.common.dto.ApiResponse;
-import com.techvalley.monitor.instance.Instance;
+import com.techvalley.monitor.client.dto.external.InstanceDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,7 +45,7 @@ public class ClientController {
 
     @GetMapping("/{id}/instances")
     @Operation(summary = "Truy vấn danh sách các máy chủ ảo thuộc khách hàng", description = "Lấy danh sách các instance của một khách hàng cụ thể")
-    public ApiResponse<List<Instance>> getClientInstances(@PathVariable("id") Long id) {
+    public ApiResponse<List<InstanceDto>> getClientInstances(@PathVariable("id") Long id) {
         return ApiResponse.success("Lấy danh sách máy chủ ảo thành công", clientService.getClientInstances(id));
     }
 
