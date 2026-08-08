@@ -5,6 +5,27 @@ spring:
   application:
     name: llm-service
 
+# URL của các service khác mà llm-service gọi sang để lấy Context data.
+# Local (chạy `mvn spring-boot:run` từng service riêng) dùng localhost mặc định.
+# Trong Docker Compose, biến môi trường INSTANCE_SERVICE_URL/ALERT_SERVICE_URL/CLIENT_SERVICE_URL
+# sẽ override thành tên service (vd: http://instance-service:8081) - xem docker-compose.yml.
+instance-service:
+  base-url: ${INSTANCE_SERVICE_URL:http://localhost:8081}
+alert-service:
+  base-url: ${ALERT_SERVICE_URL:http://localhost:8084}
+client-service:
+  base-url: ${CLIENT_SERVICE_URL:http://localhost:8082}
+
+# Cấu hình Provider LLM (Strategy Pattern - xem llm_plan.md mục 4.1)
+# provider: "mock"   -> luôn dùng rule-based, KHÔNG cần API Key, chạy offline 100%.
+# provider: "gemini" -> gọi Gemini API thật; nếu lỗi bất kỳ (thiếu key/hết quota/timeout/mất mạng)
+#                       tự động fallback sang "mock" ngay trong cùng 1 lần gọi (xem DiagnosisServiceImpl).
+llm:
+  provider: ${LLM_PROVIDER:mock}
+  api-key: ${LLM_API_KEY:}
+  model: ${LLM_MODEL:gemini-flash-latest}
+  timeout-ms: ${LLM_TIMEOUT_MS:8000}
+
 springdoc:
   packagesToScan: com.techvalley.llm
 

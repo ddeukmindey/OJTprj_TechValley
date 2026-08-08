@@ -168,6 +168,19 @@ services:
     container_name: llm-service
     ports:
       - "8085:8085"
+    environment:
+      - INSTANCE_SERVICE_URL=http://instance-service:8081
+      - ALERT_SERVICE_URL=http://alert-service:8084
+      - CLIENT_SERVICE_URL=http://client-service:8082
+      # provider mặc định "mock" -> chạy được ngay, không cần API Key.
+      # Đổi thành "gemini" và điền LLM_API_KEY (lấy miễn phí tại aistudio.google.com) để dùng AI thật.
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-}
+    depends_on:
+      - instance-service
+      - alert-service
+      - client-service
     networks:
       - techvalley-net
 
