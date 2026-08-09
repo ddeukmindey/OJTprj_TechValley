@@ -1,7 +1,7 @@
 package com.techvalley.monitor.monitoring.service.impl;
 
-import com.techvalley.monitor.common.security.UserContext;
-import com.techvalley.monitor.common.security.UserContextInfo;
+import com.techvalley.common.security.UserContext;
+import com.techvalley.common.security.UserContextInfo;
 import com.techvalley.monitor.monitoring.dto.client.ClientDto;
 import com.techvalley.monitor.monitoring.dto.client.CreateAlertRequest;
 import com.techvalley.monitor.monitoring.dto.client.InstanceDto;

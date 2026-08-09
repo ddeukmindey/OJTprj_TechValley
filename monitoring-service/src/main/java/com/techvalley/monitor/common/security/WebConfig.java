@@ -1,5 +1,5 @@
 package com.techvalley.monitor.common.security;
-
+import com.techvalley.common.security.JwtInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;

@@ -1,6 +1,6 @@
 package com.techvalley.monitor.monitoring.controller;
 
-import com.techvalley.monitor.common.dto.ApiResponse;
+import com.techvalley.common.dto.ApiResponse;
 import com.techvalley.monitor.monitoring.dto.response.MonitoringInstanceResponse;
 import com.techvalley.monitor.monitoring.dto.response.MonitoringReportResponse;
 import com.techvalley.monitor.monitoring.service.MonitoringService;

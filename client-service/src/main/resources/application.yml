@@ -26,3 +26,6 @@ springdoc:
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
+
+internal:
+  api-key: ${INTERNAL_API_KEY:changeme-internal-key-please-override}

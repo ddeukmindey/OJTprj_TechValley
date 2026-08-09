@@ -1,7 +1,7 @@
 package com.techvalley.monitor.instance.controller;
 
-import com.techvalley.monitor.common.dto.ApiResponse;
-import com.techvalley.monitor.common.dto.PageResponse;
+import com.techvalley.common.dto.ApiResponse;
+import com.techvalley.common.dto.PageResponse;
 import com.techvalley.monitor.enums.InstanceStatus;
 import com.techvalley.monitor.instance.dto.request.InstanceRequest;
 import com.techvalley.monitor.instance.dto.request.InstanceStatusUpdateRequest;

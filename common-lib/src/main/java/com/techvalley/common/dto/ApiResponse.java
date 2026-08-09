@@ -1,4 +1,4 @@
-package com.techvalley.monitor.common.dto;
+package com.techvalley.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -26,52 +26,32 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
-                .success(true)
-                .code(200)
-                .message("Thành công")
-                .data(data)
-                .timestamp(LocalDateTime.now())
-                .build();
+                .success(true).code(200).message("Thành công").data(data)
+                .timestamp(LocalDateTime.now()).build();
     }
 
     public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
-                .success(true)
-                .code(200)
-                .message(message)
-                .data(data)
-                .timestamp(LocalDateTime.now())
-                .build();
+                .success(true).code(200).message(message).data(data)
+                .timestamp(LocalDateTime.now()).build();
     }
 
     public static <T> ApiResponse<T> success(int code, String message, T data) {
         return ApiResponse.<T>builder()
-                .success(true)
-                .code(code)
-                .message(message)
-                .data(data)
-                .timestamp(LocalDateTime.now())
-                .build();
+                .success(true).code(code).message(message).data(data)
+                .timestamp(LocalDateTime.now()).build();
     }
 
     public static <T> ApiResponse<T> error(int code, String message) {
         return ApiResponse.<T>builder()
-                .success(false)
-                .code(code)
-                .message(message)
-                .data(null)
-                .timestamp(LocalDateTime.now())
-                .build();
+                .success(false).code(code).message(message).data(null)
+                .timestamp(LocalDateTime.now()).build();
     }
 
     public static <T> ApiResponse<T> error(int code, String message, List<ErrorDetail> errors) {
         return ApiResponse.<T>builder()
-                .success(false)
-                .code(code)
-                .message(message)
-                .errors(errors)
-                .timestamp(LocalDateTime.now())
-                .build();
+                .success(false).code(code).message(message).errors(errors)
+                .timestamp(LocalDateTime.now()).build();
     }
 
     @Data

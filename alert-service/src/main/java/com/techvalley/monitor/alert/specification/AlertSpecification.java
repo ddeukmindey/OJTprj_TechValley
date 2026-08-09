@@ -31,6 +31,13 @@ public final class AlertSpecification {
                 : cb.equal(root.get("instanceId"), instanceId);
     }
 
+    public static Specification<Alert> byInstanceIdIn(java.util.List<Long> instanceIds) {
+        return (root, query, cb) -> {
+            if (instanceIds == null || instanceIds.isEmpty()) return null;
+            return root.get("instanceId").in(instanceIds);
+        };
+    }
+
     public static Specification<Alert> byResolved(Boolean isResolved) {
         return (root, query, cb) -> isResolved == null
                 ? null

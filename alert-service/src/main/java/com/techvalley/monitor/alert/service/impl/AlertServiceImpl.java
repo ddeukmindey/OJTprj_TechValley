@@ -9,7 +9,7 @@ import com.techvalley.monitor.alert.mapper.AlertMapper;
 import com.techvalley.monitor.alert.repository.AlertRepository;
 import com.techvalley.monitor.alert.service.AlertService;
 import com.techvalley.monitor.alert.specification.AlertSpecification;
-import com.techvalley.monitor.common.dto.PageResponse;
+import com.techvalley.common.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,7 +17,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.techvalley.monitor.alert.dto.internal.ClientDto;
+import com.techvalley.monitor.alert.dto.internal.InstanceIdDto;
+import com.techvalley.monitor.alert.exception.AccessDeniedException;
+import com.techvalley.common.security.UserContext;
+import com.techvalley.common.security.UserContextInfo;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -31,12 +38,49 @@ public class AlertServiceImpl implements AlertService {
     private final AlertRepository alertRepository;
     private final AlertMapper alertMapper;
 
+    @Qualifier("clientServiceClient")
+    private final WebClient clientServiceClient;
+    @Qualifier("instanceServiceClient")
+    private final WebClient instanceServiceClient;
+
+    private List<Long> getManagedInstanceIdsIfManager() {
+        UserContextInfo user = UserContext.get();
+        if (user == null) {
+            throw new AccessDeniedException("Người dùng chưa được xác thực");
+        }
+        if (!"CLIENT_MANAGER".equals(user.getRole())) {
+            return null; // ADMIN: không giới hạn
+        }
+
+        List<ClientDto> clients = clientServiceClient.get()
+                .uri("/internal/clients/by-manager/{managerId}", user.getMemberId())
+                .retrieve().bodyToFlux(ClientDto.class).collectList().block();
+        List<Long> clientIds = clients != null
+                ? clients.stream().map(ClientDto::getId).toList()
+                : List.of();
+        if (clientIds.isEmpty()) return List.of(-1L); // không quản lý client nào -> không thấy alert nào
+
+        List<InstanceIdDto> instances = instanceServiceClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/internal/instances")
+                        .queryParam("clientIds", clientIds).build())
+                .retrieve().bodyToFlux(InstanceIdDto.class).collectList().block();
+        return instances != null
+                ? instances.stream().map(InstanceIdDto::getId).toList()
+                : List.of(-1L);
+    }
+    
     @Override
     @Transactional(readOnly = true)
     public PageResponse<AlertResponse> getAlerts(AlertFilterRequest filter) {
+        List<Long> managedInstanceIds = getManagedInstanceIdsIfManager();
         Pageable pageable = buildPageable(filter);
 
-        Page<Alert> alertPage = alertRepository.findAll(AlertSpecification.withFilter(filter), pageable);
+        Specification<Alert> spec = AlertSpecification.withFilter(filter);
+        if (managedInstanceIds != null) {
+            spec = spec.and(AlertSpecification.byInstanceIdIn(managedInstanceIds));
+        }
+
+        Page<Alert> alertPage = alertRepository.findAll(spec, pageable);
 
         List<AlertResponse> items = alertPage.getContent().stream()
                 .map(alertMapper::toResponse)
@@ -50,6 +94,11 @@ public class AlertServiceImpl implements AlertService {
     public AlertResponse resolveAlert(Long id) {
         Alert alert = alertRepository.findById(id)
                 .orElseThrow(() -> new AlertNotFoundException(id));
+
+        List<Long> managedInstanceIds = getManagedInstanceIdsIfManager();
+        if (managedInstanceIds != null && !managedInstanceIds.contains(alert.getInstanceId())) {
+            throw new AccessDeniedException("Bạn không có quyền xử lý cảnh báo này");
+        }
 
         if (alertMapper.isResolved(alert)) {
             throw new AlertAlreadyResolvedException(id);

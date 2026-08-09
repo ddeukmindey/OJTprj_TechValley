@@ -1,4 +1,4 @@
-package com.techvalley.monitor.common.dto;
+package com.techvalley.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,7 +10,7 @@ import org.springframework.data.domain.Page;
 @AllArgsConstructor
 public class PageMeta {
 
-    private int currentPage; // 1-based, khớp với ví dụ trong specification_OJTprj.md
+    private int currentPage;
     private int pageSize;
     private long totalElements;
     private int totalPages;

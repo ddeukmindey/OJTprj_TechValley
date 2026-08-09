@@ -1,4 +1,4 @@
-package com.techvalley.monitor.common.security;
+package com.techvalley.common.security;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

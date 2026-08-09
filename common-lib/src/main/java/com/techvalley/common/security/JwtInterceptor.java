@@ -1,4 +1,4 @@
-package com.techvalley.monitor.common.security;
+package com.techvalley.common.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
-    @Value("${jwt.secret:3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk}")
+    @Value("${jwt.secret}")
     private String secret;
 
     private SecretKey secretKey;
@@ -29,10 +29,7 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // Exclude preflight CORS requests
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            return true;
-        }
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -41,21 +38,12 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         String token = authHeader.substring(7).trim();
-        if (token.startsWith("Bearer ")) {
-            token = token.substring(7).trim();
-        }
-
         try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
+            Claims claims = Jwts.parserBuilder().setSigningKey(secretKey).build()
+                    .parseClaimsJws(token).getBody();
             Long memberId = claims.get("memberId", Long.class);
             String email = claims.getSubject();
             String role = claims.get("role", String.class);
-
             UserContext.set(new UserContextInfo(memberId, email, role));
             return true;
         } catch (ExpiredJwtException e) {
@@ -76,7 +64,7 @@ public class JwtInterceptor implements HandlerInterceptor {
         response.setStatus(status);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        String json = String.format("{\"success\":false,\"code\":%d,\"message\":\"%s\",\"data\":null}", status, message);
-        response.getWriter().write(json);
+        response.getWriter().write(String.format(
+                "{\"success\":false,\"code\":%d,\"message\":\"%s\",\"data\":null}", status, message));
     }
 }

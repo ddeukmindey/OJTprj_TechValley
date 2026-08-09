@@ -22,3 +22,11 @@ springdoc:
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
+
+client-service:
+  base-url: ${CLIENT_SERVICE_URL:http://localhost:8082}
+instance-service:
+  base-url: ${INSTANCE_SERVICE_URL:http://localhost:8081}
+
+internal:
+  api-key: ${INTERNAL_API_KEY:changeme-internal-key-please-override}

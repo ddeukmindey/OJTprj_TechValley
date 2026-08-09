@@ -1,6 +1,6 @@
 package com.techvalley.monitor.common.exception;
 
-import com.techvalley.monitor.common.dto.ApiResponse;
+import com.techvalley.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;

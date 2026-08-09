@@ -102,6 +102,8 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-instance:5432/techvalley_instance
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
       - SPRING_DATASOURCE_PASSWORD=password123
+      - CLIENT_SERVICE_URL=http://client-service:8082
+      - INTERNAL_API_KEY=t3chV4lley-Internal-2026
     depends_on:
       - postgres-instance
     networks:
@@ -120,6 +122,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=password123
       - INSTANCE_SERVICE_URL=http://instance-service:8081
       - ALERT_SERVICE_URL=http://alert-service:8084
+      - INTERNAL_API_KEY=t3chV4lley-Internal-2026
     depends_on:
       - postgres-client
       - instance-service
@@ -138,6 +141,7 @@ services:
       - INSTANCE_SERVICE_URL=http://instance-service:8081
       - ALERT_SERVICE_URL=http://alert-service:8084
       - CLIENT_SERVICE_URL=http://client-service:8082
+      - INTERNAL_API_KEY=t3chV4lley-Internal-2026
     depends_on:
       - instance-service
       - alert-service
@@ -156,6 +160,9 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-alert:5432/techvalley_alert
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
       - SPRING_DATASOURCE_PASSWORD=password123
+      - CLIENT_SERVICE_URL=http://client-service:8082
+      - INSTANCE_SERVICE_URL=http://instance-service:8081
+      - INTERNAL_API_KEY=t3chV4lley-Internal-2026
     depends_on:
       - postgres-alert
     networks:
@@ -173,6 +180,7 @@ services:
       - ALERT_SERVICE_URL=http://alert-service:8084
       - LLM_USE_REAL_API=false
       - GEMINI_API_KEY=
+      - INTERNAL_API_KEY=t3chV4lley-Internal-2026
     depends_on:
       - instance-service
       - alert-service

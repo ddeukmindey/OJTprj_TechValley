@@ -17,6 +17,18 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>3.2.3</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
+            <version>3.2.3</version>
+            <scope>provided</scope>
+        </dependency>
         <!-- Jackson Annotation dùng cho JSON Serialization (@JsonProperty, etc.) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

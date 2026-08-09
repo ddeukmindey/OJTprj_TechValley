@@ -2,7 +2,7 @@ package com.techvalley.monitor.alert.service;
 
 import com.techvalley.monitor.alert.dto.request.AlertFilterRequest;
 import com.techvalley.monitor.alert.dto.response.AlertResponse;
-import com.techvalley.monitor.common.dto.PageResponse;
+import com.techvalley.common.dto.PageResponse;
 
 public interface AlertService {
 

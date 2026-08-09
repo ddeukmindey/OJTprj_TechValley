@@ -9,17 +9,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient instanceServiceClient(WebClient.Builder builder,
-            @Value("${instance-service.base-url}") String baseUrl,
-            @Value("${internal.api-key}") String internalApiKey) {
-        return builder.baseUrl(baseUrl)
-        .defaultHeader("X-Internal-Key", internalApiKey)
-        .build();
-    }
-
-    @Bean
-    public WebClient alertServiceClient(WebClient.Builder builder,
-            @Value("${alert-service.base-url}") String baseUrl,
+    public WebClient clientServiceClient(WebClient.Builder builder,
+            @Value("${client-service.base-url}") String baseUrl,
             @Value("${internal.api-key}") String internalApiKey) {
         return builder.baseUrl(baseUrl)
         .defaultHeader("X-Internal-Key", internalApiKey)

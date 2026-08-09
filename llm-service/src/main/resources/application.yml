@@ -16,6 +16,9 @@ instance-service:
 alert-service:
   base-url: ${ALERT_SERVICE_URL:http://localhost:8084}
 
+internal:
+  api-key: ${INTERNAL_API_KEY:changeme-internal-key-please-override}
+
 llm:
   use-real-api: ${LLM_USE_REAL_API:false}
   gemini:

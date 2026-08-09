@@ -24,14 +24,20 @@ public class WebClientConfig {
 
     @Bean
     public WebClient instanceServiceClient(WebClient.Builder builder,
-            @Value("${instance-service.base-url}") String baseUrl) {
-        return timeoutBuilder(builder).baseUrl(baseUrl).build();
+            @Value("${instance-service.base-url}") String baseUrl,
+            @Value("${internal.api-key}") String internalApiKey) {
+        return timeoutBuilder(builder).baseUrl(baseUrl)
+        .defaultHeader("X-Internal-Key", internalApiKey)
+        .build();
     }
 
     @Bean
     public WebClient alertServiceClient(WebClient.Builder builder,
-            @Value("${alert-service.base-url}") String baseUrl) {
-        return timeoutBuilder(builder).baseUrl(baseUrl).build();
+            @Value("${alert-service.base-url}") String baseUrl,
+            @Value("${internal.api-key}") String internalApiKey) {
+        return timeoutBuilder(builder).baseUrl(baseUrl)
+        .defaultHeader("X-Internal-Key", internalApiKey)
+        .build();
     }
 
     @Bean

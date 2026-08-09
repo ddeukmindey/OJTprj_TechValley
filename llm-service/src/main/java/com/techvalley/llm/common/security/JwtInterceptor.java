@@ -1,4 +1,4 @@
-package com.techvalley.monitor.common.security;
+package com.techvalley.llm.common.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
-    @Value("${jwt.secret:3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk}")
+    @Value("${jwt.secret}")
     private String secret;
 
     private SecretKey secretKey;
@@ -29,7 +29,6 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // Exclude preflight CORS requests
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
@@ -41,9 +40,6 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         String token = authHeader.substring(7).trim();
-        if (token.startsWith("Bearer ")) {
-            token = token.substring(7).trim();
-        }
 
         try {
             Claims claims = Jwts.parserBuilder()

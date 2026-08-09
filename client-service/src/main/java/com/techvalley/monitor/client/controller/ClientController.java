@@ -5,7 +5,7 @@ import com.techvalley.monitor.client.dto.response.*;
 import com.techvalley.monitor.client.exception.AccessDeniedException;
 import com.techvalley.monitor.client.exception.ClientNotFoundException;
 import com.techvalley.monitor.client.service.ClientService;
-import com.techvalley.monitor.common.dto.ApiResponse;
+import com.techvalley.common.dto.ApiResponse;
 import com.techvalley.monitor.client.dto.external.InstanceDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

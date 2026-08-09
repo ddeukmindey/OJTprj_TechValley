@@ -1,4 +1,4 @@
-package com.techvalley.monitor.common.dto;
+package com.techvalley.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
