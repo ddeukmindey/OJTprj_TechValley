@@ -1,6 +1,6 @@
-# Master Implementation Plan: Chuẩn Hóa Kiến Trúc & Xử Lý Chi Tiết 20 Vấn Đề Hệ Thống
+# Master Implementation Plan: Báo Cáo Xử Lý 20 Vấn Đề Hệ Thống
 
-Tài liệu này tổng hợp chi tiết **Bối Cảnh Nguyên Nhân, Hậu Quả & Hướng Sửa Chữa Chi Tiết Cho 20 Vấn Đề (Gồm 15 Lỗi Kỹ Thuật Nghiệp Vụ + 5 Tiêu Chuẩn RESTful/Microservices: Stateless, Cacheable, Consistency, Scalability, Interoperability)** của dự án **Cloud Instance Monitoring System - TechValley**.
+Tài liệu này tổng hợp chi tiết **Bối Cảnh/Nguyên Nhân, Cách Xử Lý & Trạng Thái Cho 20 Vấn Đề (15 Lỗi Kỹ Thuật Nghiệp Vụ + 5 Tiêu Chuẩn RESTful/Microservices)** của dự án **Cloud Instance Monitoring System - TechValley**.
 
 ---
 
@@ -8,130 +8,57 @@ Tài liệu này tổng hợp chi tiết **Bối Cảnh Nguyên Nhân, Hậu Qu�
 
 | Tầng Phân Quyền | Cơ Chế Triển Khai | Phạm Vi & Mục Tiêu |
 | :--- | :--- | :--- |
-| **1. Tầng Endpoint & HTTP Method (Gateway / SecurityConfig)** | Phân quyền thô dựa trên URL Matchers + HTTP Verb (`GET`, `POST`, `DELETE`) | `POST/DELETE /api/instances` $\rightarrow$ Chỉ `ADMIN`<br>`GET /api/instances`, `GET /api/alerts` $\rightarrow$ `ADMIN` & `CLIENT_MANAGER` |
-| **2. Tầng Method & Data Ownership (Service Layer)** | Phân quyền hạt mịn kiểm tra `managerId == currentUserId` | `CLIENT_MANAGER` chỉ truy cập dữ liệu thuộc Client mà mình phụ trách. Ném `403 Forbidden` nếu cố ý can thiệp dữ liệu người khác. |
+| **1. Endpoint & HTTP Method (Gateway / SecurityConfig)** | Phân quyền thô dựa trên URL Matchers + HTTP Verb (`GET`, `POST`, `DELETE`) | `POST/DELETE /api/instances` $\rightarrow$ Chỉ `ADMIN`<br>`GET /api/instances`, `GET /api/alerts` $\rightarrow$ `ADMIN` & `CLIENT_MANAGER` |
+| **2. Method & Data Ownership (Service Layer)** | Phân quyền hạt mịn kiểm tra `managerId == currentUserId` | `CLIENT_MANAGER` chỉ truy cập dữ liệu thuộc Client mình phụ trách. Ném `403 Forbidden` nếu can thiệp dữ liệu khác. |
 
 ---
 
-## 📑 Danh Sách Chi Tiết Bối Cảnh & Hướng Sửa Chữa 20 Vấn Đề
+## 📊 Bảng Tổng Hợp 20 Vấn Đề & Hướng Xử Lý Chi Tiết
+
+### 🏛️ NHÓM I: KIẾN TRÚC MICROSERVICES & DOCKER NETWORK (Lỗi 1, 2, 3, 4, 5, 18, 19)
+
+| Mã Lỗi | Tên Vấn Đề | Bối Cảnh / Nguyên Nhân | Hướng Xử Lý & Kết Quả | Trạng Thái |
+| :---: | :--- | :--- | :--- | :---: |
+| **Lỗi 1 & 19** | DB Query chéo & Vòng lặp N+1 Request | Microservice tự chọc vào DB của service khác; gửi N HTTP request liên tiếp gây trễ 1000ms. | Xóa 100% DB query chéo, tạo RestClients inter-service và thêm API `POST /api/alerts/batch`. | ✅ **100%** |
+| **Lỗi 2** | Hardcode `localhost` trong Docker Network | URL các service bị hardcode `localhost`, làm container trỏ vào chính nó thay vì trỏ sang container khác. | Đổi URL trong `application.yml` & `docker-compose.yml` sang tên Docker DNS nội bộ (`http://instance-service:8081`). | ✅ **100%** |
+| **Lỗi 3** | Thiếu Token Relay giữa các Microservices | Request REST inter-service không đính kèm `Authorization: Bearer <token>`, bị ngắt lỗi 401. | Tạo `JwtTokenRelayInterceptor` tự đính kèm JWT Token vào Header của mọi HTTP request outbound. | ✅ **100%** |
+| **Lỗi 4** | Mở công khai Port nội bộ ra bên ngoài Docker | File `docker-compose.yml` publish tất cả port `8081`-`8085` ra ngoài host, bỏ qua cửa Gateway. | Đóng toàn bộ port nội bộ `8081`-`8085` trong mạng `techvalley-net`, chỉ mở độc nhất port Gateway `8080`. | ✅ **100%** |
+| **Lỗi 5** | Tồn tại module Monolith trùng lặp | Thư mục gốc chứa module monolith cũ `cloud-monitor-service` gây xung đột khi build. | Xóa hoàn toàn thư mục monolith cũ `cloud-monitor-service` khỏi repository dự án. | ✅ **100%** |
+| **Lỗi 18** | Xung đột Cron Job khi Scale-out *(Scalability)* | Khi scale-out `monitoring-service` đa container, tất cả đồng loạt chạy Cron Job sinh Alert rác. | Thêm `@ConditionalOnProperty` cho `MonitoringScheduler`: chỉ container PRIMARY cấu hình `true` mới khởi tạo Bean. | ✅ **100%** |
 
 ---
 
-### 🏛️ NHÓM I: GIÁM SÁT KIẾN TRÚC & GATEWAY (Lỗi 1, 2, 3, 4, 5, 18, 19)
+### ⚖️ NHÓM II: CONSISTENCY & LOGIC NGHIỆP VỤ RBAC (Lỗi 6, 7, 8, 9, 10, 15, 16, 17)
 
-#### 📌 Lỗi 1 & 19: Đọc/Sửa trực tiếp CSDL chung & Nghẽn Vòng Lặp N+1 Request
-* **Bối Cảnh & Hậu Quả**: Mã nguồn cũ nhúng `AlertRepository`, `InstanceRepository`, `ClientRepository` vào `monitoring-service` và `client-service` để chọc trực tiếp vào các bảng SQL không thuộc sở hữu. Đồng thời, `monitoring-service` gửi N request HTTP riêng lẻ liên tiếp để tạo từng Alert một, gây trễ mạng 1000ms và làm tràn RAM container.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Thêm API `POST /api/alerts/batch` ở `alert-service`. Xóa 100% DB Query chéo ở `monitoring-service` & `client-service`. Tạo RestClients (`InstanceServiceClient`, `AlertServiceClient`, `ClientServiceClient`) và dọn dẹp sạch JPA Entities trùng lặp.
-
-#### 📌 Lỗi 2: Hardcode `localhost` gây lỗi kết nối Docker Network
-* **Bối Cảnh & Hậu Quả**: URL các service bị hardcode dạng `http://localhost:8081`. Khi đóng gói chạy trong Docker Compose network (`techvalley-net`), từ ngữ `localhost` trỏ về chính container nội bộ đó chứ không trỏ sang container dịch vụ khác, gây ném ngoại lệ `Connection Refused` toàn hệ thống.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Cấu hình URL trong `application.yml` & `docker-compose.yml` theo tên Docker DNS nội bộ (`http://instance-service:8081`, `http://alert-service:8084`, `http://client-service:8082`).
-
-#### 📌 Lỗi 3: Thiếu Token Relay khi giao tiếp Inter-service
-* **Bối Cảnh & Hậu Quả**: Các cuộc gọi REST giữa các microservices (ví dụ từ `monitoring-service` sang `alert-service`) không mang theo Header `Authorization: Bearer <token>`. Khi API phía nhận kiểm tra `JwtInterceptor`, request bị ngắt ngay lập tức và ném lỗi `401 Unauthorized`.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Tạo `JwtTokenRelayInterceptor` tự động lấy Header `Authorization: Bearer <token>` từ RequestContextHolder và đính kèm vào mọi HTTP request outbound của `RestClient`.
-
-#### 📌 Lỗi 4: Mở lộ toàn bộ Port dịch vụ nội bộ ra ngoài Docker
-* **Bối Cảnh & Hậu Quả**: File `docker-compose.yml` mở công khai tất cả các port `8081` đến `8085` ra ngoài Host. Kẻ xấu có thể gọi trực tiếp URL microservice bên trong để sửa/xóa dữ liệu mà không cần đi qua cửa bảo vệ API Gateway (`8080`), vô hiệu hóa hoàn toàn cơ chế xác thực JWT & CORS.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Cập nhật `docker-compose.yml` chỉ publish port `8080` (Gateway) và `5050` (pgAdmin). Khóa các port `8081`-`8085` trong mạng nội bộ `techvalley-net`.
-
-#### 📌 Lỗi 5: Tồn tại module Monolith trùng lặp (`cloud-monitor-service`)
-* **Bối Cảnh & Hậu Quả**: Thư mục gốc dự án tồn tại đồng thời module monolith cũ `cloud-monitor-service` chứa mã nguồn trùng lặp với các microservices tách lẻ, gây nhập nhằng trong quản lý repository, xung đột khi build Maven và gây nhầm lẫn cho lập trình viên.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Đã xóa hoàn toàn thư mục monolith cũ `cloud-monitor-service` khỏi dự án.
-
-#### 📌 Lỗi 18: SCALABILITY - Xung đột Cron Job khi Scale-out Multi-container
-* **Bối Cảnh & Hậu Quả**: Khi scale-out `monitoring-service` thành nhiều container chạy song song, tất cả các container sẽ đồng loạt kích hoạt `@Scheduled` cùng lúc 5 phút/lần, dẫn đến spam trùng lặp hàng loạt Cảnh báo rác vào CSDL.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Dùng `@ConditionalOnProperty(name = "monitoring.scheduler.enabled", havingValue = "true")` thay vì ShedLock (ShedLock cần bảng lock trong DB, vi phạm thiết kế No-DB của `monitoring-service`). Container PRIMARY cấu hình `MONITORING_SCHEDULER_ENABLED=true` trong `docker-compose.yml` thì Bean `MonitoringScheduler` mới được khởi tạo. Các container scale-out thêm cấu hình `false` → Bean không tạo → Cron Job không chạy → Chống trùng lặp hoàn toàn.
+| Mã Lỗi | Tên Vấn Đề | Bối Cảnh / Nguyên Nhân | Hướng Xử Lý & Kết Quả | Trạng Thái |
+| :---: | :--- | :--- | :--- | :---: |
+| **Lỗi 6** | Vi phạm cách ly dữ liệu RBAC Tenant | `CLIENT_MANAGER` A đọc và sửa được máy chủ/cảnh báo của `CLIENT_MANAGER` B. | Áp dụng Hybrid RBAC: Service layer tự lọc `WHERE manager_id = currentUserId` khi role là `CLIENT_MANAGER`. | ✅ **100%** |
+| **Lỗi 7** | Lỗi 500 FK Violation khi Xóa Instance | Xóa Instance đang có bản ghi Alert lịch sử bị PostgreSQL chặn bởi khóa ngoại. | Trước khi xóa Instance, gọi API `deleteAlertsByInstanceId` của `alert-service` để dọn dẹp Alert liên quan. | ✅ **100%** |
+| **Lỗi 8** | Lệch kiểu dữ liệu `is_resolve` *(Consistency)* | CSDL lưu kiểu `INT` (0/1) nhưng Java Entity / DTOs dùng `Boolean` (true/false). | Thêm `@Convert(converter = NumericBooleanConverter.class)` trên `Boolean isResolved` trong `Alert.java`. | ✅ **100%** |
+| **Lỗi 9** | Thiếu logic cảnh báo máy dừng kéo dài | Hệ thống không tự động phát hiện các máy chủ dừng hoạt động trên 48 giờ. | Cập nhật `MonitoringScheduler`: quét máy `STOPPED` có mốc thời gian $\ge 48$h để tự động chèn Alert `LONG_STOPPED`. | ✅ **100%** |
+| **Lỗi 10** | Công thức SLA Uptime & Cost Forecast sai | Tính SLA dựa trên đếm máy `RUNNING` thay vì tính tổng số phút Downtime từ danh sách Alert. | Sửa công thức trong `ClientServiceImpl`: tính SLA % dựa trên tổng số phút Downtime thực tế của các Alert sự cố. | ✅ **100%** |
+| **Lỗi 15** | Thiếu tài khoản mẫu `CLIENT_MANAGER` | `DataInitializer` chỉ tạo sẵn 1 tài khoản `admin@techvalley.com`, thiếu tài khoản Manager mẫu. | Cập nhật `DataInitializer`: tự động sinh tài khoản mẫu `manager@techvalley.com` (pass: `password123`). | ✅ **100%** |
+| **Lỗi 16** | Lệch trạng thái giữa Instance & Alert *(Consistency)* | Resolve Alert xong nhưng status máy chủ bên `instance-service` vẫn bị kẹt ở chữ `ERROR`. | Trong `resolveAlert()`, gọi API `PATCH /api/instances/{id}/status` tự động khôi phục status về `RUNNING`. | ✅ **100%** |
+| **Lỗi 17** | Thiếu Optimistic Locking *(Consistency)* | 2 request cùng UPDATE 1 bản ghi làm ghi đè mất dữ liệu của nhau (Lost Update). | Thêm `@Version private Long version;` vào Entity `Alert`, `Instance`, `Client` và bắt ngoại lệ trả về `409 Conflict`. | ✅ **100%** |
 
 ---
 
-### ⚖️ NHÓM II: TIÊU CHUẨN CONSISTENCY & LOGIC NGHIỆP VỤ RBAC (Lỗi 6, 7, 8, 9, 10, 15, 16, 17)
+### 🎨 NHÓM III: FRONTEND INTEGRATION, CACHE & QUALITY (Lỗi 11, 12, 13, 14, 15_Cache, 20)
 
-#### 📌 Lỗi 17: CONSISTENCY - Thiếu Optimistic Locking (`@Version`)
-* **Bối Cảnh & Hậu Quả**: Khi 2 người dùng hoặc 2 service đồng thời bấm nút cập nhật (UPDATE) trên cùng 1 bản ghi Alert hoặc Instance tại cùng 1 milisecond, request tới sau sẽ ghi đè hoàn toàn dữ liệu của request trước (Lost Update Problem) do thiếu trường `@Version`.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Bổ sung `@Version private Long version;` vào Entity `Alert.java`, `Instance.java`, `Client.java` và thêm `OptimisticLockingFailureException` handler trả về `409 Conflict`.
-
-#### 📌 Lỗi 16: CONSISTENCY - Lệch trạng thái máy chủ giữa Instance & Alert
-* **Bối Cảnh & Hậu Quả**: Khi Admin xử lý xong sự cố và bấm Resolve Alert ở `alert-service`, Alert chuyển thành `RESOLVED` nhưng status máy chủ bên `instance-service` vẫn bị kẹt ở chữ `ERROR`. Dẫn đến trên giao diện Cảnh báo đã báo xanh nhưng giao diện Danh sách máy vẫn báo đỏ.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Cập nhật `resolveAlert` trong [AlertServiceImpl.java](file:///d:/OTJprj_TechValley/alert-service/src/main/java/com/techvalley/alert/service/impl/AlertServiceImpl.java): Tạo [InstanceServiceClient.java](file:///d:/OTJprj_TechValley/alert-service/src/main/java/com/techvalley/alert/client/InstanceServiceClient.java) tự động gọi REST API `PATCH /api/instances/{id}/status` đổi `status` máy chủ về `RUNNING` khi Resolve thành công Alert sự cố.
-
-#### 📌 Lỗi 8: CONSISTENCY - Ánh xạ kiểu dữ liệu `is_resolve` (INT `0/1` trong CSDL vs Boolean trong Java/API)
-* **Bối Cảnh & Hậu Quả**: CSDL PostgreSQL quy định cột `is_resolve` kiểu `INT` / `INTEGER` (`0`: Chưa xử lý, `1`: Đã xử lý). Trong Java Entity `Alert.java` cần dùng kiểu `Boolean` cho tương thích với REST API DTOs và UI Guidelines, nếu thiếu bộ chuyển đổi sẽ gây lỗi lệch kiểu dữ liệu (Type Mismatch) khi JPA query.
-* **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Gắn `@Column(name = "is_resolve")` và `@Convert(converter = NumericBooleanConverter.class)` trên thuộc tính `Boolean isResolved` trong Entity `Alert.java`. Bộ chuyển đổi này tự động map `Boolean` (`true/false`) trong Java sang `INT` (`1/0`) trong PostgreSQL CSDL.
-
-#### 📌 Lỗi 6: Vi phạm phân quyền RBAC Data Isolation
-* **Bối Cảnh & Hậu Quả**: Các API truy vấn danh sách máy chủ (`GET /api/instances`) và cảnh báo thiếu bộ lọc người quản lý `manager_id`. Dẫn đến người dùng role `CLIENT_MANAGER` A có thể đọc và thao tác dữ liệu máy chủ của `CLIENT_MANAGER` B, vi phạm nghiêm trọng tính riêng tư và phân quyền tenant trong hệ thống SaaS.
-* **Trạng thái**: ⏳ *Giai đoạn 2*
-* **Hướng sửa**: Áp dụng Hybrid RBAC: Endpoint level (`SecurityConfig`) phân quyền HTTP Verb; Method level (`InstanceServiceImpl`, `AlertServiceImpl`) đọc `UserContext` và lọc `WHERE manager_id = currentUserId` khi role là `CLIENT_MANAGER`. Ném `403 Forbidden` nếu can thiệp dữ liệu khác.
-
-#### 📌 Lỗi 7: Foreign Key Violation (`500`) khi Xóa Instance
-* **Bối Cảnh & Hậu Quả**: Bảng `alerts` chứa khóa ngoại `instance_id` trỏ về `instances.id`. Khi người dùng xóa 1 máy chủ đang có các bản ghi lịch sử cảnh báo, PostgreSQL chặn hành động xóa và ném ngoại lệ `DataIntegrityViolationException`, khiến client nhận lỗi `500 Internal Server Error`.
-* **Trạng thái**: ⏳ *Giai đoạn 2*
-* **Hướng sửa**: Trước khi xóa `Instance` ở `instance-service`, tự động gọi API `DELETE /api/alerts?instanceId={id}` của `alert-service` để dọn dẹp các `alerts` liên quan.
-
-#### 📌 Lỗi 9: Thiếu logic tự động cảnh báo máy dừng kéo dài (`LONG_STOPPED`)
-* **Bối Cảnh & Hậu Quả**: Hệ thống yêu cầu tự động phát hiện các máy chủ ảo dừng hoạt động trên 48 giờ để tạo cảnh báo `LONG_STOPPED`. Mã nguồn cũ thiếu Cron Job kiểm tra mốc thời gian `updateAt`/`launcheAt`, dẫn đến máy dừng lâu ngày nhưng hệ thống không hề cảnh báo cho quản trị viên.
-* **Trạng thái**: ⏳ *Giai đoạn 2*
-* **Hướng sửa**: Cập nhật `MonitoringScheduler.java`: Kiểm tra mốc thời gian `updateAt` / `launcheAt` $\ge 48$ giờ đối với máy `STOPPED` để tự động chèn Alert `LONG_STOPPED`.
-
-#### 📌 Lỗi 10: Công thức SLA Uptime & Cost Forecast chưa chuẩn
-* **Bối Cảnh & Hậu Quả**: Hàm `getClientSla` cũ tính phần trăm SLA dựa trên việc đếm số máy `RUNNING` thời điểm hiện tại thay vì tính tổng số phút Downtime từ danh sách Alert sự cố trong tháng. Dẫn đến chỉ số SLA báo sai lệch so với cam kết hợp đồng (BASIC 95%, STANDARD 99%, PREMIUM 99.9%).
-* **Trạng thái**: ⏳ *Giai đoạn 2*
-* **Hướng sửa**: Cập nhật công thức trong `ClientServiceImpl.java`: Tính SLA Uptime dựa trên tổng số phút Downtime từ danh sách Alert sự cố thực tế thay vì đếm số máy `RUNNING` đơn thuần.
-
-#### 📌 Lỗi 15: Thiếu tài khoản Dữ liệu mẫu `CLIENT_MANAGER`
-* **Bối Cảnh & Hậu Quả**: `DataInitializer` ở `auth-gateway-service` chỉ tạo duy nhất 1 tài khoản `admin@techvalley.com`. Hệ thống thiếu sẵn tài khoản mẫu role `CLIENT_MANAGER` để kiểm thử tính năng phân quyền cách ly dữ liệu RBAC.
-* **Trạng thái**: ⏳ *Giai đoạn 2*
-* **Hướng sửa**: Cập nhật `DataInitializer.java` ở `auth-gateway-service` tự động sinh tài khoản mẫu `manager@techvalley.com` (Role: `CLIENT_MANAGER`, Password: `password123`).
+| Mã Lỗi | Tên Vấn Đề | Bối Cảnh / Nguyên Nhân | Hướng Xử Lý & Kết Quả | Trạng Thái |
+| :---: | :--- | :--- | :--- | :---: |
+| **Lỗi 11** | Thiếu CORS cho Web Frontend | Web Frontend (React/Vite `localhost:3000`/`5173`) bị trình duyệt chặn do vi phạm SOP. | Cấu hình `CorsConfigurationSource` ở `SecurityConfig` và `addCorsMappings` ở 4 `WebConfig` microservices. | ✅ **100%** |
+| **Lỗi 12** | Thiếu Validation cho `cpuUsage` | Request DTO thiếu `@DecimalMax("100.0")`, người dùng có thể gửi CPU âm hoặc > 100%. | Thêm `@DecimalMax(value = "100.0")` và `@Min(0)` vào `InstanceRequest` và `InstanceStatusUpdateRequest`. | ✅ **100%** |
+| **Lỗi 13** | Crash 500 khi truyền sai `sortBy` | Truyền tên cột không có trong Entity làm JPA ném `PropertyReferenceException` crash 500. | Thêm bộ lọc `allowedSortFields`: tự động fallback về cột mặc định `launcheAt` nếu client truyền tên biến sai. | ✅ **100%** |
+| **Lỗi 14** | Trùng lặp class `ApiResponse` | 6 microservices tự tạo class `ApiResponse` riêng lẻ gây trùng lặp và tốn công bảo trì. | Đưa `ApiResponse` chuẩn 5 trường vào `common-lib` dùng làm Single Source of Truth cho 5 microservices nghiệp vụ. | ✅ **100%** |
+| **Lỗi 15_Cache** | Thiếu Caching cho Danh mục *(Cacheable)* | Mỗi lần reload trang microservices lại truy vấn SQL làm chậm thời gian phản hồi. | Thêm `spring-boot-starter-cache`, `@EnableCaching`, `@Cacheable` cho các API đọc tĩnh (`clientCost`, `clientSla`, `instances`). | ✅ **100%** |
+| **Lỗi 20** | Thiếu Swagger API Documentation | Thiếu OpenAPI 3.0 annotations khiến đối tác/Frontend khó tra cứu Hợp đồng API. | Khai báo đầy đủ OpenAPI 3.0 annotations (`@Tag`, `@Operation`) cho toàn bộ 5 Controllers hệ thống. | ✅ **100%** |
 
 ---
 
-### 🎨 NHÓM III: FRONTEND INTEGRATION, CACHEABLE & QUALITY (Lỗi 11, 12, 13, 14, 15_Cache, 20)
+## 🚀 Tóm Tắt Tiến Độ Theo Giai Đoạn
 
-#### 📌 Lỗi 15_Cache: CACHEABLE - Thiếu Caching cho Danh mục Tĩnh
-* **Bối Cảnh & Hậu Quả**: Mỗi lần User vào trang Refresh, microservices lại thực hiện câu lệnh SQL nén I/O CSDL để lấy lại danh sách Client và Instance. Hệ thống thiếu cơ chế Cache ngắn hạn làm chậm thời gian phản hồi.
-* **Trạng thái**: ⏳ *Giai đoạn 3*
-* **Hướng sửa**: Thêm `@EnableCaching` và cấu hình `@Cacheable(value = "clients", key = "#id")` cho các API đọc danh mục Khách hàng (`Client`) và Máy chủ (`Instance`), kèm `@CacheEvict` khi `UPDATE`/`DELETE`. Đính kèm HTTP Header `Cache-Control: max-age=60, private`.
-
-#### 📌 Lỗi 20: INTEROPERABILITY - Thiếu Swagger API Documentation ở các Service
-* **Bối Cảnh & Hậu Quả**: Một số Controller thiếu OpenAPI 3.0 annotations (`@Operation`, `@Tag`), khiến người phát triển Frontend và đối tác tích hợp khó tra cứu cấu trúc Hợp đồng API (API Contract).
-* **Trạng thái**: ⏳ *Giai đoạn 3*
-* **Hướng sửa**: Bổ sung OpenAPI 3.0 / Swagger Annotations (`@Tag`, `@Operation`, `@Parameter`) cho `InstanceController` và `ClientController`.
-
-#### 📌 Lỗi 14: Trùng lặp class `ApiResponse` không dùng thư viện chung `common-lib`
-* **Bối Cảnh & Hậu Quả**: Các microservice tự định nghĩa class `ApiResponse` riêng lẻ trong package nội bộ thay vì sử dụng chung class chuẩn trong `common-lib`. Điều này làm lệch cấu trúc JSON Envelope giữa các dịch vụ và tốn công bảo trì.
-* **Trạng thái**: ⏳ *Giai đoạn 3*
-* **Hướng sửa**: Gỡ bỏ các class `ApiResponse` tự viết ở `llm-service`, `instance-service`, thống nhất import `com.techvalley.monitor.common.dto.ApiResponse` từ module `common-lib`.
-
-#### 📌 Lỗi 11: Thiếu cấu hình CORS cho Web Frontend
-* **Bối Cảnh & Hậu Quả**: Microservices chưa được cấu hình `CorsFilter`. Khi ứng dụng Web Frontend (React/Vite chạy trên `localhost:3000` hoặc `localhost:5173`) gửi AJAX request sang API Gateway, trình duyệt web sẽ chặn hoàn toàn do vi phạm Same-Origin Policy (SOP).
-* **Trạng thái**: ⏳ *Giai đoạn 3*
-* **Hướng sửa**: Thêm `CorsFilter` ở `auth-gateway-service` và các Microservices cho phép Frontend (`localhost:3000`, `localhost:5173`) gọi API không bị trình duyệt chặn.
-
-#### 📌 Lỗi 12: Thiếu Validation `@Max(100)` cho chỉ số CPU Usage
-* **Bối Cảnh & Hậu Quả**: DTO `InstanceRequest` thiếu annotation `@Max(100)` và `@Min(0)`. Người dùng có thể truyền chỉ số CPU âm hoặc vượt quá 100% (ví dụ `cpuUsage = 999`), làm sai lệch toàn bộ báo cáo thống kê và biểu đồ Monitoring.
-* **Trạng thái**: ⏳ *Giai đoạn 3*
-* **Hướng sửa**: Thêm `@Max(value = 100)` vào `InstanceRequest` và `InstanceStatusUpdateRequest`.
-
-#### 📌 Lỗi 13: Lỗi Crash 500 khi truyền sai tham số Sort (`sortBy`)
-* **Bối Cảnh & Hậu Quả**: Các API danh sách nhận tham số `sortBy` từ Query String nhưng không validate. Nếu client truyền tên biến không tồn tại trong Entity (ví dụ `sortBy=invalid_field`), Spring Data JPA ném `PropertyReferenceException` và gây crash trả về `500 Server Error`.
-* **Trạng thái**: ⏳ *Giai đoạn 3*
-* **Hướng sửa**: Viết hàm Validate tham số `sortBy` tự động fallback về trường ngày mặc định nếu truyền sai tên biến.
-
----
-
-## 🚀 Lộ Trình Sửa Chữa Chi Tiết Theo 4 Giai Đoạn
-
-* **GIAI ĐOẠN 1**: Core Architecture, Dynamic Docker Network & Scalability (Lỗi 1, 2, 3, 4, 5, 18, 19) $\rightarrow$ ✅ **ĐÃ HOÀN THÀNH 100%**
-* **GIAI ĐOẠN 2**: CONSISTENCY & Logic Nghiệp Vụ RBAC (Lỗi 6, 7, 8, 9, 10, 15, 16, 17) $\rightarrow$ ⏳ **ĐANG THỰC THI (Đã xong Lỗi 16 & 17)**
-* **GIAI ĐOẠN 3**: CACHEABLE, INTEROPERABILITY & Quality (Lỗi 11, 12, 13, 14, 15_Cache, 20) $\rightarrow$ ⏳ **CHỜ THỰC THI**
-* **GIAI ĐOẠN 4**: Kiểm Thử Hệ Thống & Verification $\rightarrow$ ⏳ **GIAI ĐOẠN CUỐI CÙNG**
+- **GIAI ĐOẠN 1**: Core Architecture, Dynamic Docker Network & Scalability (Lỗi 1, 2, 3, 4, 5, 18, 19) $\rightarrow$ ✅ **ĐÃ HOÀN THÀNH 100%**
+- **GIAI ĐOẠN 2**: CONSISTENCY & Logic Nghiệp Vụ RBAC (Lỗi 6, 7, 8, 9, 10, 15, 16, 17) $\rightarrow$ ✅ **ĐÃ HOÀN THÀNH 100%**
+- **GIAI ĐOẠN 3**: CACHEABLE, INTEROPERABILITY & Quality (Lỗi 11, 12, 13, 14, 15_Cache, 20) $\rightarrow$ ✅ **ĐÃ HOÀN THÀNH 100%**
+- **GIAI ĐOẠN 4**: Kiểm Thử Hệ Thống & Verification (Build 8/8 modules SUCCESS) $\rightarrow$ ✅ **ĐÃ HOÀN THÀNH 100%**
