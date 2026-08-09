@@ -5,13 +5,13 @@ public class AlertDto {
     private Long instanceId;
     private String alertType;
     private String message;
-    private Integer isResolved;
+    private Boolean isResolved;
     private String detectedAt;
 
     public AlertDto() {
     }
 
-    public AlertDto(Long id, Long instanceId, String alertType, String message, Integer isResolved, String detectedAt) {
+    public AlertDto(Long id, Long instanceId, String alertType, String message, Boolean isResolved, String detectedAt) {
         this.id = id;
         this.instanceId = instanceId;
         this.alertType = alertType;
@@ -32,8 +32,8 @@ public class AlertDto {
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 
-    public Integer getIsResolved() { return isResolved; }
-    public void setIsResolved(Integer isResolved) { this.isResolved = isResolved; }
+    public Boolean getIsResolved() { return isResolved; }
+    public void setIsResolved(Boolean isResolved) { this.isResolved = isResolved; }
 
     public String getDetectedAt() { return detectedAt; }
     public void setDetectedAt(String detectedAt) { this.detectedAt = detectedAt; }

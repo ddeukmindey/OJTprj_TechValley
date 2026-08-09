@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.type.NumericBooleanConverter;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,6 +30,7 @@ public class Alert {
     private String message;
 
     @Column(name = "is_resolve")
+    @Convert(converter = NumericBooleanConverter.class)
     private Boolean isResolved = false; // true: Resolved, false: Unresolved
 
     private LocalDateTime detectedAt;

@@ -49,7 +49,7 @@ public class AlertServiceClient {
                             node.path("instanceId").asLong(instanceId),
                             node.path("alertType").asText("HIGH_CPU"),
                             node.path("message").asText("Cảnh báo sự cố"),
-                            node.path("isResolved").asInt(0),
+                            node.path("isResolved").asBoolean(false),
                             node.path("detectedAt").asText("2026-08-06 20:45:00")
                     ));
                 }
@@ -65,19 +65,19 @@ public class AlertServiceClient {
         long mod = Math.abs(instanceId != null ? instanceId : 1) % 4;
         if (mod == 0) {
             return List.of(
-                    new AlertDto(201L, instanceId, "HIGH_CPU", "PostgreSQL CPU usage reached 88.5% due to long-running unindexed queries", 0, "2026-08-06 21:10:00"),
-                    new AlertDto(202L, instanceId, "HIGH_MEMORY", "DB Connection pool usage reached 95% capacity", 0, "2026-08-06 21:15:00")
+                    new AlertDto(201L, instanceId, "HIGH_CPU", "PostgreSQL CPU usage reached 88.5% due to long-running unindexed queries", false, "2026-08-06 21:10:00"),
+                    new AlertDto(202L, instanceId, "HIGH_MEMORY", "DB Connection pool usage reached 95% capacity", false, "2026-08-06 21:15:00")
             );
         } else if (mod == 1) {
             return List.of(
-                    new AlertDto(203L, instanceId, "SYSTEM_ERROR", "Auth Gateway service container stopped unexpectedly (Exit code 137 - OOMKilled)", 0, "2026-08-06 22:00:00")
+                    new AlertDto(203L, instanceId, "SYSTEM_ERROR", "Auth Gateway service container stopped unexpectedly (Exit code 137 - OOMKilled)", false, "2026-08-06 22:00:00")
             );
         } else if (mod == 2) {
             return List.of(); // Không có alert -> Trạng thái HEALTHY
         } else {
             return List.of(
-                    new AlertDto(204L, instanceId, "SYSTEM_ERROR", "HTTP 504 Gateway Timeout detected on /api/v1/checkout endpoint", 0, "2026-08-06 22:30:00"),
-                    new AlertDto(205L, instanceId, "HIGH_CPU", "CPU usage critical at 96.8% under peak load", 0, "2026-08-06 22:32:00")
+                    new AlertDto(204L, instanceId, "SYSTEM_ERROR", "HTTP 504 Gateway Timeout detected on /api/v1/checkout endpoint", false, "2026-08-06 22:30:00"),
+                    new AlertDto(205L, instanceId, "HIGH_CPU", "CPU usage critical at 96.8% under peak load", false, "2026-08-06 22:32:00")
             );
         }
     }
