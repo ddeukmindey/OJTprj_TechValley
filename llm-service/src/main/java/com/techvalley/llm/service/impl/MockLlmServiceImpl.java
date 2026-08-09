@@ -31,7 +31,7 @@ public class MockLlmServiceImpl implements LlmProviderService {
         List<String> actionableSteps = new ArrayList<>();
 
         if ("STOPPED".equalsIgnoreCase(status)) {
-            issueType = "SYSTEM_ERROR";
+            issueType = "STOPPED";
             healthScore = 0;
             diagnosis = String.format("[Cảnh báo Ngừng hoạt động] Máy chủ '%s' (ID: %d) đang ở trạng thái STOPPED. Dịch vụ không thể tiếp nhận yêu cầu.", instance.getInstanceName(), instance.getId());
             rootCause = "Tiến trình container bị ngừng đột ngột do lỗi gạt cầu chì (OOMKilled) hoặc lệnh dừng chủ động từ quản trị viên.";

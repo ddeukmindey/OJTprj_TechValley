@@ -13,6 +13,7 @@ import com.techvalley.auth.exception.UnauthorizedException;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AuthServiceImpl implements AuthService {
 
     private final MemberRepository memberRepository;

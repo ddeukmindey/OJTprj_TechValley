@@ -68,7 +68,7 @@ public class GeminiLlmServiceImpl implements LlmProviderService {
             Bắt buộc trả về ĐÚNG định dạng JSON tuân theo cấu trúc sau, KHÔNG thêm bất kỳ lời mở đầu hay ký tự markdown ngoài khối JSON:
             {
               "instanceStatus": "%s",
-              "issueType": "<Phân loại sự cố chính: HIGH_CPU, SYSTEM_ERROR, HIGH_MEMORY, CRITICAL, NONE>",
+              "issueType": "<Phân loại sự cố chính: HIGH_CPU, SYSTEM_ERROR, STOPPED, HIGH_MEMORY, CRITICAL, NONE>",
               "healthScore": <số nguyên từ 0 đến 100>,
               "diagnosis": "<tóm tắt tình trạng máy chủ>",
               "rootCause": "<nguyên nhân kỹ thuật chi tiết dựa trên lỗi thực tế>",
