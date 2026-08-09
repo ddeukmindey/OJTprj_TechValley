@@ -109,7 +109,7 @@ Toàn bộ thiết kế dữ liệu tuân thủ mô hình CSDL Quan hệ (Relati
      - `members`: `id`, `name`, `password`, `role`, `created_at`
      - `clients`: `id`, `client_name`, `contract_plan`, `create_at`, `manager_id`
      - `instances`: `id`, `client_id`, `cpu_usage`, `instance_name`, `instance_type`, `launche_at`, `monthly_cost`, `region`, `status`, `update_at`
-     - `alerts`: `id`, `instance_id`, `alert_type`, `detected_at`, `is_resolve`, `message`, `resolve_at`
+     - `alerts`: `id`, `instance_id`, `alert_type`, `detected_at`, `is_resolve` (INT 0/1), `message`, `resolve_at`
      - `cost_snapshots`: `id`, `client_id`, `year_month`, `total_cost`, `recorded_at`
 2. **Mô hình Liên kết Khóa Ngoại (Foreign Key Relationships)**:
    - `clients.manager_id` -> Khóa ngoại tham chiếu tới `members.id` (PRIMARY KEY `id` - BIGINT/BIGSERIAL).

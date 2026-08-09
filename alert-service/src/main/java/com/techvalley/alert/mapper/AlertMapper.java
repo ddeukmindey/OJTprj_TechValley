@@ -7,19 +7,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class AlertMapper {
 
-    public AlertResponse toResponse(Alert alert) {
-        if (alert == null) {
-            return null;
-        }
-
-        return AlertResponse.builder()
-                .id(alert.getId())
-                .instanceId(alert.getInstanceId())
-                .alertType(alert.getAlertType())
-                .message(alert.getMessage())
-                .isResolved(Boolean.TRUE.equals(alert.getIsResolved()))
-                .detectedAt(alert.getDetectedAt())
-                .resolvedAt(alert.getResolvedAt())
-                .build();
+  public AlertResponse toResponse(Alert alert) {
+    if (alert == null) {
+      return null;
     }
+
+    return AlertResponse.builder()
+        .id(alert.getId())
+        .instanceId(alert.getInstanceId())
+        .alertType(alert.getAlertType())
+        .message(alert.getMessage())
+        .isResolved(alert.getIsResolved())
+        .detectedAt(alert.getDetectedAt())
+        .resolvedAt(alert.getResolvedAt())
+        .build();
+  }
 }

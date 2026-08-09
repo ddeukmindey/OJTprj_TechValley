@@ -26,11 +26,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -85,7 +89,7 @@ public class InstanceServiceImpl implements InstanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, InstanceType instanceType, String region, String search, int page, int size) {
+    public PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, InstanceType instanceType, String region, String search, String sortBy, String sortDir, int page, int size) {
         UserContextInfo user = UserContext.get();
         if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
             List<Long> managedClientIds = clientServiceClient.getClientIdsByManagerId(user.getMemberId());
@@ -106,7 +110,11 @@ public class InstanceServiceImpl implements InstanceService {
                 .and(InstanceSpecification.hasRegion(region))
                 .and(InstanceSpecification.searchByName(search));
 
-        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "launcheAt"));
+        // Lỗi 13: Validate sortBy để tránh PropertyReferenceException gây crash 500
+        Set<String> allowedSortFields = Set.of("launcheAt", "updateAt", "instanceName", "cpuUsage", "monthlyCost", "status");
+        String safeSortBy = (sortBy != null && allowedSortFields.contains(sortBy)) ? sortBy : "launcheAt";
+        Sort.Direction direction = (sortDir != null && "asc".equalsIgnoreCase(sortDir)) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(direction, safeSortBy));
         Page<Instance> instancePage = instanceRepository.findAll(spec, pageable);
 
         List<InstanceResponse> items = instancePage.getContent().stream()
@@ -118,6 +126,7 @@ public class InstanceServiceImpl implements InstanceService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "instances", key = "#id")
     public InstanceResponse getInstanceById(Long id) {
         Instance instance = instanceRepository.findById(id)
                 .orElseThrow(() -> new InstanceNotFoundException("Không tìm thấy Máy chủ ảo với ID: " + id));
@@ -127,6 +136,7 @@ public class InstanceServiceImpl implements InstanceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "instances", key = "#id")
     public InstanceResponse updateInstanceStatus(Long id, InstanceStatusUpdateRequest request) {
         Instance instance = instanceRepository.findById(id)
                 .orElseThrow(() -> new InstanceNotFoundException("Không tìm thấy Máy chủ ảo với ID: " + id));
@@ -146,6 +156,10 @@ public class InstanceServiceImpl implements InstanceService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "instances", key = "#id"),
+        @CacheEvict(value = "instancesByClient", allEntries = true)
+    })
     public void deleteInstance(Long id) {
         Instance instance = instanceRepository.findById(id)
                 .orElseThrow(() -> new InstanceNotFoundException("Không tìm thấy Máy chủ ảo với ID: " + id));
@@ -162,6 +176,7 @@ public class InstanceServiceImpl implements InstanceService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "instancesByClient", key = "#clientId")
     public List<InstanceResponse> getInstancesByClientId(Long clientId) {
         return instanceRepository.findByClientId(clientId).stream()
                 .map(instanceMapper::toResponse)
@@ -170,6 +185,7 @@ public class InstanceServiceImpl implements InstanceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "instances", key = "#id")
     public InstanceResponse updateCpuUsage(Long id, Float cpuUsage) {
         Instance instance = instanceRepository.findById(id)
                 .orElseThrow(() -> new InstanceNotFoundException("Không tìm thấy Máy chủ ảo với ID: " + id));

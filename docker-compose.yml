@@ -9,6 +9,8 @@ services:
       POSTGRES_USER: techvalley_admin
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: techvalley_db
+    # Port 5432 chỉ mở khi môi trường Dev để dùng pgAdmin desktop/IDE connect trực tiếp
+    # Production: xóa block ports này đi để chặn hoàn toàn kết nối từ bên ngoài
     ports:
       - "5432:5432"
     volumes:
@@ -53,8 +55,7 @@ services:
       context: .
       dockerfile: instance-service/Dockerfile
     container_name: instance-service
-    ports:
-      - "8081:8081"
+    # Không expose port ra ngoài host — chỉ giao tiếp nội bộ qua techvalley-net
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
@@ -70,8 +71,7 @@ services:
       context: .
       dockerfile: client-service/Dockerfile
     container_name: client-service
-    ports:
-      - "8082:8082"
+    # Không expose port ra ngoài host — chỉ giao tiếp nội bộ qua techvalley-net
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
@@ -87,12 +87,11 @@ services:
       context: .
       dockerfile: monitoring-service/Dockerfile
     container_name: monitoring-service
-    ports:
-      - "8083:8083"
+    # Không expose port ra ngoài host — chỉ giao tiếp nội bộ qua techvalley-net
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
-      - SPRING_DATASOURCE_USERNAME=techvalley_admin
-      - SPRING_DATASOURCE_PASSWORD=password123
+      # Bật Scheduler cho container PRIMARY này.
+      # Nếu scale-out thêm container phụ, đặt MONITORING_SCHEDULER_ENABLED=false để tắt Cron Job.
+      - MONITORING_SCHEDULER_ENABLED=true
     depends_on:
       - postgres-db
     networks:
@@ -104,8 +103,7 @@ services:
       context: .
       dockerfile: alert-service/Dockerfile
     container_name: alert-service
-    ports:
-      - "8084:8084"
+    # Không expose port ra ngoài host — chỉ giao tiếp nội bộ qua techvalley-net
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/techvalley_db
       - SPRING_DATASOURCE_USERNAME=techvalley_admin
@@ -121,8 +119,7 @@ services:
       context: .
       dockerfile: llm-service/Dockerfile
     container_name: llm-service
-    ports:
-      - "8085:8085"
+    # Không expose port ra ngoài host — chỉ giao tiếp nội bộ qua techvalley-net
     networks:
       - techvalley-net
 

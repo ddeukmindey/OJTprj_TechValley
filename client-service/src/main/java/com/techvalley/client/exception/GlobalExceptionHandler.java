@@ -1,6 +1,6 @@
 package com.techvalley.client.exception;
 
-import com.techvalley.client.dto.response.ApiResponse;
+import com.techvalley.common.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;

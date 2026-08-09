@@ -1,7 +1,7 @@
 package com.techvalley.monitoring.controller;
 
 import com.techvalley.monitoring.enums.InstanceStatus;
-import com.techvalley.monitoring.dto.response.ApiResponse;
+import com.techvalley.common.dto.response.ApiResponse;
 import com.techvalley.monitoring.dto.response.MonitoringInstanceResponse;
 import com.techvalley.monitoring.dto.response.MonitoringReportResponse;
 import com.techvalley.monitoring.service.MonitoringService;

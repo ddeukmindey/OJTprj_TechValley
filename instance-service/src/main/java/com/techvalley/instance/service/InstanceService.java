@@ -13,7 +13,7 @@ public interface InstanceService {
 
     InstanceResponse createInstance(InstanceRequest request);
 
-    PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, InstanceType instanceType, String region, String search, int page, int size);
+    PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, InstanceType instanceType, String region, String search, String sortBy, String sortDir, int page, int size);
 
     InstanceResponse getInstanceById(Long id);
 

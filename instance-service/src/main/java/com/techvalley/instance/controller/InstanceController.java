@@ -4,7 +4,7 @@ import com.techvalley.instance.enums.InstanceStatus;
 import com.techvalley.instance.enums.InstanceType;
 import com.techvalley.instance.dto.request.InstanceRequest;
 import com.techvalley.instance.dto.request.InstanceStatusUpdateRequest;
-import com.techvalley.instance.dto.response.ApiResponse;
+import com.techvalley.common.dto.response.ApiResponse;
 import com.techvalley.instance.dto.response.InstanceResponse;
 import com.techvalley.instance.dto.response.PageResponse;
 import com.techvalley.instance.service.InstanceService;
@@ -34,19 +34,21 @@ public class InstanceController {
     }
 
     @GetMapping
-    @Operation(summary = "Truy vấn danh sách máy chủ ảo", description = "Lấy danh sách các máy chủ ảo có lọc theo clientId, status, instanceType, region, tìm kiếm theo tên và phân trang")
+    @Operation(summary = "Truy vấn danh sách máy chủ ảo", description = "Lấy danh sách các máy chủ ảo có lọc theo clientId, status, instanceType, region, tìm kiếm theo tên, sắp xếp và phân trang")
     public ApiResponse<PageResponse<InstanceResponse>> getInstances(
             @RequestParam(value = "clientId", required = false) Long clientId,
             @RequestParam(value = "status", required = false) InstanceStatus status,
             @RequestParam(value = "instanceType", required = false) InstanceType instanceType,
             @RequestParam(value = "region", required = false) String region,
             @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "sortBy", defaultValue = "launcheAt") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "desc") String sortDir,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "10") int size) {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         return ApiResponse.success("Lấy danh sách máy chủ ảo thành công",
-                instanceService.getInstances(clientId, status, instanceType, region, search, page, size));
+                instanceService.getInstances(clientId, status, instanceType, region, search, sortBy, sortDir, page, size));
     }
 
     @GetMapping("/{id}")

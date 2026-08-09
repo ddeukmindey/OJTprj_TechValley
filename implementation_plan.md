@@ -47,7 +47,7 @@ Tài liệu này tổng hợp chi tiết **Bối Cảnh Nguyên Nhân, Hậu Qu�
 #### 📌 Lỗi 18: SCALABILITY - Xung đột Cron Job khi Scale-out Multi-container
 * **Bối Cảnh & Hậu Quả**: Khi scale-out `monitoring-service` thành nhiều container chạy song song, tất cả các container sẽ đồng loạt kích hoạt `@Scheduled` cùng lúc 5 phút/lần, dẫn đến spam trùng lặp hàng loạt Cảnh báo rác vào CSDL.
 * **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Thêm dependency `ShedLock` và cấu hình `@SchedulerLock` trong `MonitoringScheduler.java` đảm bảo khi scale-out multi-container chỉ 1 container duy nhất chạy Cron Job tại 1 thời điểm.
+* **Hướng sửa đã thực hiện**: Dùng `@ConditionalOnProperty(name = "monitoring.scheduler.enabled", havingValue = "true")` thay vì ShedLock (ShedLock cần bảng lock trong DB, vi phạm thiết kế No-DB của `monitoring-service`). Container PRIMARY cấu hình `MONITORING_SCHEDULER_ENABLED=true` trong `docker-compose.yml` thì Bean `MonitoringScheduler` mới được khởi tạo. Các container scale-out thêm cấu hình `false` → Bean không tạo → Cron Job không chạy → Chống trùng lặp hoàn toàn.
 
 ---
 
@@ -63,10 +63,10 @@ Tài liệu này tổng hợp chi tiết **Bối Cảnh Nguyên Nhân, Hậu Qu�
 * **Trạng thái**: ✅ **ĐÃ FIX 100%**
 * **Hướng sửa đã thực hiện**: Cập nhật `resolveAlert` trong [AlertServiceImpl.java](file:///d:/OTJprj_TechValley/alert-service/src/main/java/com/techvalley/alert/service/impl/AlertServiceImpl.java): Tạo [InstanceServiceClient.java](file:///d:/OTJprj_TechValley/alert-service/src/main/java/com/techvalley/alert/client/InstanceServiceClient.java) tự động gọi REST API `PATCH /api/instances/{id}/status` đổi `status` máy chủ về `RUNNING` khi Resolve thành công Alert sự cố.
 
-#### 📌 Lỗi 8: CONSISTENCY - Sai kiểu dữ liệu `isResolved` (Integer `0/1` vs Boolean)
-* **Bối Cảnh & Hậu Quả**: Đặc tả CSDL PostgreSQL quy định cột `is_resolve` kiểu `BOOLEAN` (`true`/`false`), nhưng Java Entity `Alert.java` lại khai báo `Integer isResolved` (`0`/`1`). Việc này gây mâu thuẫn tiêu chuẩn CONSISTENCY, lệch kiểu dữ liệu khi JPA query và khiến UI Badges hiển thị sai logic.
+#### 📌 Lỗi 8: CONSISTENCY - Ánh xạ kiểu dữ liệu `is_resolve` (INT `0/1` trong CSDL vs Boolean trong Java/API)
+* **Bối Cảnh & Hậu Quả**: CSDL PostgreSQL quy định cột `is_resolve` kiểu `INT` / `INTEGER` (`0`: Chưa xử lý, `1`: Đã xử lý). Trong Java Entity `Alert.java` cần dùng kiểu `Boolean` cho tương thích với REST API DTOs và UI Guidelines, nếu thiếu bộ chuyển đổi sẽ gây lỗi lệch kiểu dữ liệu (Type Mismatch) khi JPA query.
 * **Trạng thái**: ✅ **ĐÃ FIX 100%**
-* **Hướng sửa đã thực hiện**: Chuyển `isResolved` trong Entity `Alert.java`, `AlertResponse`, `AlertMapper`, `AlertSpecification`, `AlertRepository` và `AlertServiceImpl` từ Integer `0/1` sang kiểu `Boolean` (`true`/`false`), gắn `@Column(name = "is_resolve")` khớp 100% với PostgreSQL & UI Guidelines.
+* **Hướng sửa đã thực hiện**: Gắn `@Column(name = "is_resolve")` và `@Convert(converter = NumericBooleanConverter.class)` trên thuộc tính `Boolean isResolved` trong Entity `Alert.java`. Bộ chuyển đổi này tự động map `Boolean` (`true/false`) trong Java sang `INT` (`1/0`) trong PostgreSQL CSDL.
 
 #### 📌 Lỗi 6: Vi phạm phân quyền RBAC Data Isolation
 * **Bối Cảnh & Hậu Quả**: Các API truy vấn danh sách máy chủ (`GET /api/instances`) và cảnh báo thiếu bộ lọc người quản lý `manager_id`. Dẫn đến người dùng role `CLIENT_MANAGER` A có thể đọc và thao tác dữ liệu máy chủ của `CLIENT_MANAGER` B, vi phạm nghiêm trọng tính riêng tư và phân quyền tenant trong hệ thống SaaS.

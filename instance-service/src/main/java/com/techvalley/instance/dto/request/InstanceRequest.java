@@ -2,6 +2,7 @@ package com.techvalley.instance.dto.request;
 
 import com.techvalley.instance.enums.InstanceStatus;
 import com.techvalley.instance.enums.InstanceType;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,6 +28,7 @@ public class InstanceRequest {
 
     @NotNull(message = "cpuUsage is required")
     @Min(value = 0, message = "cpuUsage must be >= 0")
+    @DecimalMax(value = "100.0", message = "cpuUsage must be <= 100")
     private Float cpuUsage;
 
     @NotNull(message = "monthlyCost is required")

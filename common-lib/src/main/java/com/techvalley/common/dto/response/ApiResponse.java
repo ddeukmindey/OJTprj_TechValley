@@ -1,4 +1,4 @@
-package com.techvalley.client.dto.response;
+package com.techvalley.common.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,11 +7,25 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Chuẩn API Envelope dùng chung cho toàn bộ 5 microservices nghiệp vụ:
+ * instance-service, client-service, monitoring-service, alert-service, llm-service.
+ *
+ * Cấu trúc JSON trả về:
+ * {
+ *   "success": true/false,
+ *   "code": 200/400/401/403/404/500,
+ *   "message": "...",
+ *   "data": {...},
+ *   "timestamp": "2026-08-09T22:00:00"
+ * }
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApiResponse<T> {
+
     private boolean success;
     private int code;
     private String message;

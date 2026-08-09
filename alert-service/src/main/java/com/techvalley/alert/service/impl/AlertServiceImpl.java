@@ -10,6 +10,8 @@ import com.techvalley.alert.exception.AlertAlreadyResolvedException;
 import com.techvalley.alert.exception.AlertNotFoundException;
 import com.techvalley.alert.mapper.AlertMapper;
 import com.techvalley.alert.repository.AlertRepository;
+import com.techvalley.alert.security.UserContext;
+import com.techvalley.alert.security.UserContextInfo;
 import com.techvalley.alert.service.AlertService;
 import com.techvalley.alert.specification.AlertSpecification;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +46,17 @@ public class AlertServiceImpl implements AlertService {
                 .and(AlertSpecification.hasAlertType(filterRequest.getAlertType()))
                 .and(AlertSpecification.hasIsResolved(filterRequest.getIsResolved()))
                 .and(AlertSpecification.detectedAtBetween(filterRequest.getFromDate(), filterRequest.getToDate()));
+
+        // RBAC Data Isolation (Lỗi 6): CLIENT_MANAGER chỉ thấy Alert thuộc Instance của Client mình phụ trách
+        UserContextInfo user = UserContext.get();
+        if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
+            List<Long> allowedInstanceIds = instanceServiceClient.getInstanceIdsByManagerId(user.getMemberId());
+            if (allowedInstanceIds == null || allowedInstanceIds.isEmpty()) {
+                // Manager không có Client nào -> trả về danh sách rỗng
+                return PageResponse.empty(filterRequest.getPage(), filterRequest.getSize());
+            }
+            spec = spec.and(AlertSpecification.hasInstanceIdIn(allowedInstanceIds));
+        }
 
         int page = filterRequest.getPage() > 0 ? filterRequest.getPage() - 1 : 0;
         int size = filterRequest.getSize() > 0 ? filterRequest.getSize() : 10;

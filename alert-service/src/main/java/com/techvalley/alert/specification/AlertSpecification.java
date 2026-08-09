@@ -7,6 +7,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 public final class AlertSpecification {
 
@@ -16,6 +17,13 @@ public final class AlertSpecification {
     public static Specification<Alert> hasInstanceId(Long instanceId) {
         return (root, query, criteriaBuilder) ->
                 instanceId == null ? null : criteriaBuilder.equal(root.get("instanceId"), instanceId);
+    }
+
+    /** RBAC: Lọc chỉ các Alert có instanceId nằm trong danh sách được phép */
+    public static Specification<Alert> hasInstanceIdIn(List<Long> instanceIds) {
+        return (root, query, criteriaBuilder) ->
+                (instanceIds == null || instanceIds.isEmpty()) ? criteriaBuilder.disjunction()
+                        : root.get("instanceId").in(instanceIds);
     }
 
     public static Specification<Alert> hasAlertType(AlertType alertType) {

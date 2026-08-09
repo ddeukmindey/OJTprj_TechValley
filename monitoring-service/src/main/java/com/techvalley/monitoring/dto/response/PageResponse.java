@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -13,29 +12,31 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PageResponse<T> {
-    private List<T> items;
-    private PaginationInfo pagination;
+  private List<T> items;
+  private PaginationInfo pagination;
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class PaginationInfo {
-        private int currentPage;
-        private int pageSize;
-        private long totalElements;
-        private int totalPages;
-    }
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class PaginationInfo {
+    private int currentPage;
+    private int pageSize;
+    private long totalElements;
+    private int totalPages;
+  }
 
-    public static <T> PageResponse<T> of(List<T> items, Page<?> page) {
-        return PageResponse.<T>builder()
-                .items(items)
-                .pagination(PaginationInfo.builder()
-                        .currentPage(page.getNumber() + 1)
-                        .pageSize(page.getSize())
-                        .totalElements(page.getTotalElements())
-                        .totalPages(page.getTotalPages())
-                        .build())
-                .build();
-    }
+  /** Factory method thuần Java — không phụ thuộc spring-data-jpa */
+  public static <T> PageResponse<T> of(List<T> items, int currentPage, int pageSize, long totalElements) {
+    int totalPages = pageSize > 0 ? (int) Math.ceil((double) totalElements / pageSize) : 0;
+    return PageResponse.<T>builder()
+        .items(items)
+        .pagination(PaginationInfo.builder()
+            .currentPage(currentPage)
+            .pageSize(pageSize)
+            .totalElements(totalElements)
+            .totalPages(totalPages)
+            .build())
+        .build();
+  }
 }

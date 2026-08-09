@@ -17,6 +17,8 @@ import com.techvalley.client.enums.AlertType;
 import com.techvalley.client.enums.ContractPlan;
 import com.techvalley.client.enums.InstanceStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -70,6 +72,7 @@ public class ClientServiceImpl implements ClientService {
 
   @Override
   @Transactional
+  @CacheEvict(value = {"clientCost", "clientSla", "clientInstances"}, allEntries = true)
   public ClientResponse createClient(ClientRequest request) {
     validateAdminRole();
 
@@ -140,12 +143,14 @@ public class ClientServiceImpl implements ClientService {
   }
 
   @Override
+  @Cacheable(value = "clientInstances", key = "#id")
   public List<InstanceDto> getClientInstances(Long id) {
     getClientAndValidateAccess(id);
     return instanceServiceClient.getInstancesByClientId(id);
   }
 
   @Override
+  @Cacheable(value = "clientCost", key = "#id")
   public ClientCostResponse getClientCost(Long id) {
     Client client = getClientAndValidateAccess(id);
     List<InstanceDto> instances = instanceServiceClient.getInstancesByClientId(id);
@@ -246,6 +251,7 @@ public class ClientServiceImpl implements ClientService {
   }
 
   @Override
+  @Cacheable(value = "clientSla", key = "#id")
   public ClientSlaResponse getClientSla(Long id) {
     Client client = getClientAndValidateAccess(id);
     List<InstanceDto> instances = instanceServiceClient.getInstancesByClientId(id);

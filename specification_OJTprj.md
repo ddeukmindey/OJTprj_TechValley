@@ -96,7 +96,7 @@ Lưu lịch sử các cảnh báo phát sinh từ máy chủ.
 | `instance_id` | `BIGINT` | `NOT NULL`, `FOREIGN KEY REFERENCES instances(id)` | Instance phát sinh cảnh báo |
 | `alert_type` | `VARCHAR(50)` | `NOT NULL` | Loại cảnh báo: `'HIGH_CPU'`, `'SYSTEM_ERROR'`, `'LONG_STOPPED'` |
 | `detected_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | Thời gian phát sinh cảnh báo |
-| `is_resolve` | `BOOLEAN` | `NOT NULL`, `DEFAULT FALSE` | Trạng thái xử lý (`true`: Đã xử lý, `false`: Chưa xử lý) |
+| `is_resolve` | `INT` / `INTEGER` | `NOT NULL`, `DEFAULT 0` | Trạng thái xử lý (`0`: Chưa xử lý, `1`: Đã xử lý) |
 | `message` | `TEXT` | `NOT NULL` | Nội dung mô tả chi tiết sự cố |
 | `resolve_at` | `TIMESTAMP` | `NULLABLE` | Thời gian đánh dấu hoàn tất xử lý |
 

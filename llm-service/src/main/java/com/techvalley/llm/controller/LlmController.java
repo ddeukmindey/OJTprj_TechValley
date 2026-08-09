@@ -1,6 +1,6 @@
 package com.techvalley.llm.controller;
 
-import com.techvalley.llm.dto.response.ApiResponse;
+import com.techvalley.common.dto.response.ApiResponse;
 import com.techvalley.llm.dto.response.InstanceDiagnosisResponse;
 import com.techvalley.llm.service.LlmService;
 import io.swagger.v3.oas.annotations.Operation;

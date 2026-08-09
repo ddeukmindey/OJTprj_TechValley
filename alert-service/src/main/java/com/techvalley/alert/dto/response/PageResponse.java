@@ -38,4 +38,16 @@ public class PageResponse<T> {
                         .build())
                 .build();
     }
+
+    public static <T> PageResponse<T> empty(int currentPage, int pageSize) {
+        return PageResponse.<T>builder()
+                .items(List.of())
+                .pagination(PaginationInfo.builder()
+                        .currentPage(currentPage)
+                        .pageSize(pageSize)
+                        .totalElements(0)
+                        .totalPages(0)
+                        .build())
+                .build();
+    }
 }

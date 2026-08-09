@@ -3,6 +3,7 @@ package com.techvalley.client.controller;
 import com.techvalley.client.dto.client.InstanceDto;
 import com.techvalley.client.dto.request.ClientRequest;
 import com.techvalley.client.dto.response.*;
+import com.techvalley.common.dto.response.ApiResponse;
 import com.techvalley.client.exception.AccessDeniedException;
 import com.techvalley.client.exception.ClientNotFoundException;
 import com.techvalley.client.service.ClientService;

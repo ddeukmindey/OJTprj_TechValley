@@ -20,20 +20,28 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
-        if (memberRepository.existsByEmail("admin@techvalley.com")) {
-            return;
+        // Tài khoản ADMIN mặc định
+        if (!memberRepository.existsByEmail("admin@techvalley.com")) {
+            Member admin = new Member();
+            admin.setEmail("admin@techvalley.com");
+            admin.setPassword(passwordEncoder.encode("123456"));
+            admin.setName("System Administrator");
+            admin.setRole(Role.ADMIN);
+            admin.setCreateAt(LocalDateTime.now());
+            memberRepository.save(admin);
+            System.out.println("✅ Đã tạo tài khoản ADMIN mặc định: admin@techvalley.com");
         }
 
-        Member admin = new Member();
-
-        admin.setEmail("admin@techvalley.com");
-        admin.setPassword(passwordEncoder.encode("123456"));
-        admin.setName("System Administrator");
-        admin.setRole(Role.ADMIN);
-        admin.setCreateAt(LocalDateTime.now());
-
-        memberRepository.save(admin);
-
-        System.out.println("Default admin account created.");
+        // Tài khoản CLIENT_MANAGER mẫu (Lỗi 15)
+        if (!memberRepository.existsByEmail("manager@techvalley.com")) {
+            Member manager = new Member();
+            manager.setEmail("manager@techvalley.com");
+            manager.setPassword(passwordEncoder.encode("123456"));
+            manager.setName("Client Manager");
+            manager.setRole(Role.CLIENT_MANAGER);
+            manager.setCreateAt(LocalDateTime.now());
+            memberRepository.save(manager);
+            System.out.println("✅ Đã tạo tài khoản CLIENT_MANAGER mẫu: manager@techvalley.com");
+        }
     }
 }

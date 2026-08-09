@@ -2,7 +2,7 @@ package com.techvalley.alert.controller;
 
 import com.techvalley.alert.dto.request.AlertCreateRequest;
 import com.techvalley.alert.dto.request.AlertFilterRequest;
-import com.techvalley.alert.dto.response.ApiResponse;
+import com.techvalley.common.dto.response.ApiResponse;
 import com.techvalley.alert.dto.response.AlertResponse;
 import com.techvalley.alert.dto.response.PageResponse;
 import com.techvalley.alert.service.AlertService;

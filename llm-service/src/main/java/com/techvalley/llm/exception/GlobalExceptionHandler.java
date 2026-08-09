@@ -1,6 +1,6 @@
 package com.techvalley.llm.exception;
 
-import com.techvalley.llm.dto.response.ApiResponse;
+import com.techvalley.common.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

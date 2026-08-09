@@ -8,10 +8,12 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -38,6 +40,24 @@ public class InstanceServiceClient {
 
     public void updateInstanceStatusToRunning(Long instanceId) {
         updateInstanceStatus(instanceId, InstanceStatus.RUNNING);
+    }
+
+    @SuppressWarnings("null")
+    public List<Long> getInstanceIdsByManagerId(Long managerId) {
+        if (managerId == null) {
+            return List.of();
+        }
+        try {
+            String url = instanceServiceUrl + "/api/instances/manager/" + managerId + "/ids";
+            log.info("Gọi REST API GET sang instance-service để lấy instanceIds của managerId={}", managerId);
+            return restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Long>>() {});
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy instanceIds từ instance-service: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     @SuppressWarnings("null")

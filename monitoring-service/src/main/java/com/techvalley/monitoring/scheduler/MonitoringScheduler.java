@@ -1,7 +1,6 @@
 package com.techvalley.monitoring.scheduler;
 
 import com.techvalley.monitoring.service.MonitoringService;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,10 +17,17 @@ public class MonitoringScheduler {
 
   /**
    * Tự động quét chỉ số hạ tầng định kỳ (cứ mỗi 5 phút).
-   * Gắn @SchedulerLock để khi Scale-out multi-container chỉ 1 container duy nhất thực thi.
+   *
+   * Chống trùng lặp khi Scale-out Multi-container:
+   * - Cấu hình biến môi trường "monitoring.scheduler.enabled=true" cho container
+   * PRIMARY.
+   * - Các container phụ đặt "monitoring.scheduler.enabled=false" → Bean này không
+   * được tạo
+   * → Cron Job không chạy trên các container phụ.
+   * Không dùng ShedLock vì service này là No-DB (không kết nối trực tiếp vào
+   * PostgreSQL).
    */
   @Scheduled(cron = "0 */5 * * * *")
-  @SchedulerLock(name = "MonitoringScheduler_runAutoScan", lockAtMostFor = "10m", lockAtLeastFor = "1m")
   public void runAutoScan() {
     log.info("⏰ Bắt đầu chạy Cron Job quét tự động chỉ số hạ tầng...");
     try {
