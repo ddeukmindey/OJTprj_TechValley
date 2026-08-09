@@ -48,4 +48,10 @@ public class InstanceInternalController {
                 : instanceRepository.findByClientIdIn(clientIds);
         return result.stream().map(InstanceInternalDto::from).toList();
     }
+    @GetMapping("/{id}")
+    public InstanceInternalDto getById(@PathVariable Long id) {
+        Instance instance = instanceRepository.findById(id)
+                .orElseThrow(() -> new com.techvalley.monitor.instance.exception.InstanceNotFoundException(id));
+        return InstanceInternalDto.from(instance);
+    }
 }

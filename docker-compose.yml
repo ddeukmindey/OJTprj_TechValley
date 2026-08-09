@@ -168,6 +168,14 @@ services:
     container_name: llm-service
     ports:
       - "8085:8085"
+    environment:
+      - INSTANCE_SERVICE_URL=http://instance-service:8081
+      - ALERT_SERVICE_URL=http://alert-service:8084
+      - LLM_USE_REAL_API=false
+      - GEMINI_API_KEY=
+    depends_on:
+      - instance-service
+      - alert-service
     networks:
       - techvalley-net
 

@@ -10,3 +10,14 @@ springdoc:
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
+  
+instance-service:
+  base-url: ${INSTANCE_SERVICE_URL:http://localhost:8081}
+alert-service:
+  base-url: ${ALERT_SERVICE_URL:http://localhost:8084}
+
+llm:
+  use-real-api: ${LLM_USE_REAL_API:false}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    api-url: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent

@@ -54,4 +54,11 @@ public class AlertInternalController {
         List<Alert> alerts = alertRepository.findByInstanceIdInAndAlertTypeNot(instanceIds, AlertType.CPU_HIGH);
         return alerts.stream().map(AlertInternalDto::from).toList();
     }
+
+    @GetMapping("/by-instance/{instanceId}")
+    public List<AlertInternalDto> getByInstance(@PathVariable Long instanceId) {
+        return alertRepository.findByInstanceId(instanceId).stream()
+                .map(AlertInternalDto::from)
+                .toList();
+    }
 }
