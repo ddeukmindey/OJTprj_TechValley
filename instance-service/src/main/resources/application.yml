@@ -19,6 +19,9 @@ spring:
 
 springdoc:
   packagesToScan: com.techvalley.monitor.instance
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /docs/instance-api-docs
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk

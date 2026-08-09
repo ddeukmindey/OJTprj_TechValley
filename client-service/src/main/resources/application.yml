@@ -23,7 +23,10 @@ alert-service:
 
 springdoc:
   packagesToScan: com.techvalley.monitor.client
-
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /docs/client-api-docs
+  
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
 

@@ -19,6 +19,9 @@ spring:
 
 springdoc:
   packagesToScan: com.techvalley.monitor.alert
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /docs/alert-api-docs
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
