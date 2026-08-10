@@ -23,3 +23,8 @@ Thumbs.db
 
 # Env / secrets
 .env
+
+# Frontend (React + Vite) — dist được build bên trong Docker (nginx/Dockerfile),
+# không commit node_modules/dist vào git
+frontend/node_modules/
+frontend/dist/

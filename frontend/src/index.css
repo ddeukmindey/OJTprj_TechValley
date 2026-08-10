@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/*
+  Design tokens — TechValley Cloud Monitor
+  Huong: bang dieu khien van hanh (ops console), nen toi, chu ro, mau accent
+  gan voi y nghia that cua du lieu (RUNNING/STOPPED/ERROR) thay vi trang tri.
+*/
+:root {
+  --tv-bg: #0e1116;
+  --tv-surface: #161a22;
+  --tv-surface-2: #1e232d;
+  --tv-border: #2a303c;
+  --tv-text: #e7e9ee;
+  --tv-text-muted: #8b93a3;
+  --tv-accent: #2dd4bf;      /* teal - thao tac chinh, lien ket, focus */
+  --tv-accent-dim: #14403c;
+  --tv-running: #34d399;     /* xanh la - RUNNING */
+  --tv-stopped: #fbbf24;     /* vang - STOPPED */
+  --tv-error: #f87171;       /* do - ERROR */
+
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--tv-bg);
+  color: var(--tv-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+code, .tv-mono {
+  font-family: var(--font-mono);
+}
