@@ -26,7 +26,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     url: /docs/client-api-docs
-  
+    config-url: /docs/client-config
+    
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
 

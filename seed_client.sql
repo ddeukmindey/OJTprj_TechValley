@@ -20,9 +20,9 @@ DELETE FROM clients WHERE client_name IN (
 );
 
 INSERT INTO clients (client_name, contract_plan, manager_id, create_at) VALUES
-('Cong ty TNHH ABC Technology',   'PREMIUM',  2, NOW()),  -- manager_id = id của manager1@techvalley.com
-('Cong ty Co phan XYZ Solutions', 'STANDARD', 2, NOW()),  -- cùng manager1, để test 1 manager quản lý nhiều client
-('Startup DEF Innovations',       'BASIC',    3, NOW());  -- manager_id = id của manager2@techvalley.com
+('Cong ty TNHH ABC Technology',   'PREMIUM',  3, NOW()),  -- manager_id = id của manager1@techvalley.com
+('Cong ty Co phan XYZ Solutions', 'STANDARD', 3, NOW()),  -- cùng manager1, để test 1 manager quản lý nhiều client
+('Startup DEF Innovations',       'BASIC',    4, NOW());  -- manager_id = id của manager2@techvalley.com
 
 -- Xem lại kết quả + lấy ID để dùng cho bước seed instance
 SELECT id, client_name, contract_plan, manager_id FROM clients ORDER BY id;

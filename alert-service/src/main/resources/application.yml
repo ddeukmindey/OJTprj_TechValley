@@ -22,7 +22,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     url: /docs/alert-api-docs
-
+    config-url: /docs/alert-config
+    
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
 

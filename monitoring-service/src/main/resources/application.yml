@@ -17,6 +17,7 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     url: /docs/monitor-api-docs
+    config-url: /docs/monitor-config
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk

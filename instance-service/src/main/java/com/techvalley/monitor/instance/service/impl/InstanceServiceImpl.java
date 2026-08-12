@@ -65,6 +65,7 @@ public class InstanceServiceImpl implements InstanceService {
     @Override
     @Transactional
     public InstanceResponse createInstance(InstanceRequest request) {
+        checkOwnership(request.getClientId());
         Instance instance = instanceMapper.toEntity(request);
         instance = instanceRepository.save(instance);
         return instanceMapper.toResponse(instance);

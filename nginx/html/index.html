@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TechValley Cloud Monitor — API Docs</title>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --surface: #161a22;
+      --border: #2a303c;
+      --text: #e7e9ee;
+      --text-muted: #8b93a3;
+      --accent: #2dd4bf;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+    }
+    main { width: 100%; max-width: 640px; padding: 2rem; }
+    p.eyebrow {
+      margin: 0 0 0.25rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    h1 { margin: 0 0 0.5rem; font-size: 1.5rem; }
+    p.subtitle { margin: 0 0 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    a.card {
+      display: block;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s ease;
+    }
+    a.card:hover { border-color: var(--accent); }
+    .card .name { font-weight: 600; margin-bottom: 0.375rem; }
+    .card .path {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .card .desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">TechValley</p>
+    <h1>Cloud Instance Monitoring — API Docs</h1>
+    <p class="subtitle">Swagger UI của từng microservice, dùng để test API và demo trực tiếp.</p>
+
+    <div class="grid">
+      <a class="card" href="/docs/instance/" target="_blank" rel="noreferrer">
+        <div class="name">Instance Service</div>
+        <div class="path">/docs/instance/</div>
+        <div class="desc">Đăng ký / truy vấn / xoá instance, cập nhật trạng thái.</div>
+      </a>
+      <a class="card" href="/docs/client/" target="_blank" rel="noreferrer">
+        <div class="name">Client Service</div>
+        <div class="path">/docs/client/</div>
+        <div class="desc">Khách hàng, chi phí, dự báo chi phí, SLA uptime.</div>
+      </a>
+      <a class="card" href="/docs/monitor/" target="_blank" rel="noreferrer">
+        <div class="name">Monitoring Service</div>
+        <div class="path">/docs/monitor/</div>
+        <div class="desc">Cảnh báo CPU cao, lỗi hệ thống, máy chủ dừng lâu, báo cáo tổng quan.</div>
+      </a>
+      <a class="card" href="/docs/alert/" target="_blank" rel="noreferrer">
+        <div class="name">Alert Service</div>
+        <div class="path">/docs/alert/</div>
+        <div class="desc">Lịch sử alert, đánh dấu đã xử lý.</div>
+      </a>
+    </div>
+  </main>
+</body>
+</html>
