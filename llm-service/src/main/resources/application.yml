@@ -7,6 +7,10 @@ spring:
 
 springdoc:
   packagesToScan: com.techvalley.llm
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /docs/llm-api-docs
+    config-url: /docs/llm-config
 
 jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
@@ -23,4 +27,4 @@ llm:
   use-real-api: ${LLM_USE_REAL_API:false}
   gemini:
     api-key: ${GEMINI_API_KEY:}
-    api-url: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
+    api-url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent

@@ -1,6 +1,12 @@
 server:
   port: 8080
 
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /docs/auth-api-docs
+    config-url: /docs/auth-config
+
 spring:
   datasource:
     url: jdbc:postgresql://postgres-auth:5432/techvalley_auth

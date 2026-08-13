@@ -179,8 +179,8 @@ services:
       - INSTANCE_SERVICE_URL=http://instance-service:8081
       - ALERT_SERVICE_URL=http://alert-service:8084
       - LLM_USE_REAL_API=false
-      - GEMINI_API_KEY=
-      - INTERNAL_API_KEY=t3chV4lley-Internal-2026
+      - GEMINI_API_KEY=true
+      - INTERNAL_API_KEY=${GEMINI_API_KEY}
     depends_on:
       - instance-service
       - alert-service
