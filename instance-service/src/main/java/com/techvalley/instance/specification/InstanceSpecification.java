@@ -34,4 +34,11 @@ public final class InstanceSpecification {
         return (root, query, criteriaBuilder) ->
                 (search == null || search.isBlank()) ? null : criteriaBuilder.like(criteriaBuilder.lower(root.get("instanceName")), "%" + search.toLowerCase() + "%");
     }
+
+    public static Specification<Instance> hasClientIds(java.util.List<Long> clientIds) {
+        return (root, query, criteriaBuilder) ->
+                (clientIds == null || clientIds.isEmpty()) 
+                        ? criteriaBuilder.disjunction() 
+                        : root.get("clientId").in(clientIds);
+    }
 }

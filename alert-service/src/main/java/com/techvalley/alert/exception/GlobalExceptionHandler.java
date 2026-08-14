@@ -20,6 +20,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(404, ex.getMessage()));
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(403, ex.getMessage()));
+    }
+
     @ExceptionHandler(AlertAlreadyResolvedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAlertAlreadyResolved(AlertAlreadyResolvedException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

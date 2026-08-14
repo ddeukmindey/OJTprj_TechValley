@@ -6,6 +6,7 @@ import com.techvalley.alert.dto.request.AlertFilterRequest;
 import com.techvalley.alert.dto.response.AlertResponse;
 import com.techvalley.alert.dto.response.PageResponse;
 import com.techvalley.alert.entity.Alert;
+import com.techvalley.alert.exception.AccessDeniedException;
 import com.techvalley.alert.exception.AlertAlreadyResolvedException;
 import com.techvalley.alert.exception.AlertNotFoundException;
 import com.techvalley.alert.mapper.AlertMapper;
@@ -51,11 +52,17 @@ public class AlertServiceImpl implements AlertService {
         UserContextInfo user = UserContext.get();
         if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
             List<Long> allowedInstanceIds = instanceServiceClient.getInstanceIdsByManagerId(user.getMemberId());
-            if (allowedInstanceIds == null || allowedInstanceIds.isEmpty()) {
-                // Manager không có Client nào -> trả về danh sách rỗng
-                return PageResponse.empty(filterRequest.getPage(), filterRequest.getSize());
+            if (filterRequest.getInstanceId() != null) {
+                if (allowedInstanceIds == null || !allowedInstanceIds.contains(filterRequest.getInstanceId())) {
+                    throw new AccessDeniedException("Bạn không có quyền xem cảnh báo của máy chủ ảo này");
+                }
+            } else {
+                if (allowedInstanceIds == null || allowedInstanceIds.isEmpty()) {
+                    // Manager không có Client nào -> trả về danh sách rỗng
+                    return PageResponse.empty(filterRequest.getPage(), filterRequest.getSize());
+                }
+                spec = spec.and(AlertSpecification.hasInstanceIdIn(allowedInstanceIds));
             }
-            spec = spec.and(AlertSpecification.hasInstanceIdIn(allowedInstanceIds));
         }
 
         int page = filterRequest.getPage() > 0 ? filterRequest.getPage() - 1 : 0;
@@ -77,6 +84,14 @@ public class AlertServiceImpl implements AlertService {
         Alert alert = alertRepository.findById(id)
                 .orElseThrow(() -> new AlertNotFoundException(id));
 
+        UserContextInfo user = UserContext.get();
+        if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
+            List<Long> allowedInstanceIds = instanceServiceClient.getInstanceIdsByManagerId(user.getMemberId());
+            if (allowedInstanceIds == null || !allowedInstanceIds.contains(alert.getInstanceId())) {
+                throw new AccessDeniedException("Bạn không có quyền xử lý cảnh báo này");
+            }
+        }
+
         if (Boolean.TRUE.equals(alert.getIsResolved())) {
             throw new AlertAlreadyResolvedException(id);
         }
@@ -94,6 +109,14 @@ public class AlertServiceImpl implements AlertService {
     @Override
     @Transactional
     public AlertResponse createAlert(AlertCreateRequest request) {
+        UserContextInfo user = UserContext.get();
+        if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
+            List<Long> allowedInstanceIds = instanceServiceClient.getInstanceIdsByManagerId(user.getMemberId());
+            if (allowedInstanceIds == null || !allowedInstanceIds.contains(request.getInstanceId())) {
+                throw new AccessDeniedException("Bạn không có quyền tạo cảnh báo cho máy chủ ảo này");
+            }
+        }
+
         Optional<Alert> existing = alertRepository.findFirstByInstanceIdAndAlertTypeAndIsResolved(
                 request.getInstanceId(), request.getAlertType(), false);
 
@@ -132,6 +155,13 @@ public class AlertServiceImpl implements AlertService {
     @Override
     @Transactional
     public void deleteAlertsByInstanceId(Long instanceId) {
+        UserContextInfo user = UserContext.get();
+        if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
+            List<Long> allowedInstanceIds = instanceServiceClient.getInstanceIdsByManagerId(user.getMemberId());
+            if (allowedInstanceIds == null || !allowedInstanceIds.contains(instanceId)) {
+                throw new AccessDeniedException("Bạn không có quyền xóa cảnh báo cho máy chủ ảo này");
+            }
+        }
         log.info("Đang xóa tất cả Alert thuộc về instanceId={}", instanceId);
         alertRepository.deleteByInstanceId(instanceId);
     }

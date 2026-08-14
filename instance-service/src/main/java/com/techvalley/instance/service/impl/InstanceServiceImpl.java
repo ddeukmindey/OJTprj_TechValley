@@ -10,6 +10,7 @@ import com.techvalley.instance.dto.request.InstanceStatusUpdateRequest;
 import com.techvalley.instance.dto.response.InstanceResponse;
 import com.techvalley.instance.dto.response.PageResponse;
 import com.techvalley.instance.entity.Instance;
+import com.techvalley.instance.exception.AccessDeniedException;
 import com.techvalley.instance.exception.InstanceNotFoundException;
 import com.techvalley.instance.exception.InvalidInstanceOperationException;
 
@@ -62,7 +63,7 @@ public class InstanceServiceImpl implements InstanceService {
         if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
             boolean isManagerOfClient = clientServiceClient.checkClientOwnership(clientId, user.getMemberId());
             if (!isManagerOfClient) {
-                throw new InvalidInstanceOperationException("Bạn không có quyền quản lý các Máy chủ ảo thuộc về Khách hàng ID: " + clientId);
+                throw new AccessDeniedException("Bạn không có quyền quản lý các Máy chủ ảo thuộc về Khách hàng ID: " + clientId);
             }
         }
     }
@@ -91,21 +92,26 @@ public class InstanceServiceImpl implements InstanceService {
     @Transactional(readOnly = true)
     public PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, InstanceType instanceType, String region, String search, String sortBy, String sortDir, int page, int size) {
         UserContextInfo user = UserContext.get();
+        Specification<Instance> spec;
+
         if (user != null && "CLIENT_MANAGER".equals(user.getRole())) {
             List<Long> managedClientIds = clientServiceClient.getClientIdsByManagerId(user.getMemberId());
             if (clientId != null) {
                 if (!managedClientIds.contains(clientId)) {
-                    throw new InvalidInstanceOperationException("Bạn không có quyền xem thông tin Máy chủ ảo của Khách hàng ID: " + clientId);
+                    throw new AccessDeniedException("Bạn không có quyền xem thông tin Máy chủ ảo của Khách hàng ID: " + clientId);
                 }
+                spec = Specification.where(InstanceSpecification.hasClientId(clientId));
             } else {
                 if (managedClientIds.isEmpty()) {
                     return PageResponse.of(List.of(), Page.empty());
                 }
+                spec = Specification.where(InstanceSpecification.hasClientIds(managedClientIds));
             }
+        } else {
+            spec = Specification.where(InstanceSpecification.hasClientId(clientId));
         }
 
-        Specification<Instance> spec = Specification.where(InstanceSpecification.hasClientId(clientId))
-                .and(InstanceSpecification.hasStatus(status))
+        spec = spec.and(InstanceSpecification.hasStatus(status))
                 .and(InstanceSpecification.hasInstanceType(instanceType))
                 .and(InstanceSpecification.hasRegion(region))
                 .and(InstanceSpecification.searchByName(search));
@@ -178,6 +184,7 @@ public class InstanceServiceImpl implements InstanceService {
     @Transactional(readOnly = true)
     @Cacheable(value = "instancesByClient", key = "#clientId")
     public List<InstanceResponse> getInstancesByClientId(Long clientId) {
+        validateClientManagerAccess(clientId);
         return instanceRepository.findByClientId(clientId).stream()
                 .map(instanceMapper::toResponse)
                 .collect(Collectors.toList());
