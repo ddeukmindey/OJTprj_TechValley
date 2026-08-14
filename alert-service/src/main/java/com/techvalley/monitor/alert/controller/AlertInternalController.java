@@ -5,6 +5,7 @@ import com.techvalley.monitor.alert.dto.internal.AlertInternalDto;
 import com.techvalley.monitor.alert.dto.internal.CreateAlertInternalRequest;
 import com.techvalley.monitor.alert.repository.AlertRepository;
 import com.techvalley.monitor.enums.AlertType;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/internal/alerts")
 @RequiredArgsConstructor
+@Hidden
 public class AlertInternalController {
 
     private final AlertRepository alertRepository;

@@ -4,6 +4,7 @@ import com.techvalley.monitor.enums.InstanceStatus;
 import com.techvalley.monitor.instance.Instance;
 import com.techvalley.monitor.instance.dto.internal.InstanceInternalDto;
 import com.techvalley.monitor.instance.repository.InstanceRepository;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/internal/instances")
 @RequiredArgsConstructor
+@Hidden
 public class InstanceInternalController {
 
     private final InstanceRepository instanceRepository;

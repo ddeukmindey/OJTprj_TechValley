@@ -2,6 +2,7 @@ package com.techvalley.monitor.client.controller;
 
 import com.techvalley.monitor.client.Client;
 import com.techvalley.monitor.client.repository.ClientRepository;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/internal/clients")
 @RequiredArgsConstructor
+@Hidden
 public class ClientInternalController {
 
     private final ClientRepository clientRepository;
