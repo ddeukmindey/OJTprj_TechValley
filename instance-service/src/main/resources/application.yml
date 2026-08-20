@@ -31,3 +31,7 @@ client-service:
 
 internal:
   api-key: ${INTERNAL_API_KEY:changeme-internal-key-please-override}
+
+instance:
+  cpu-warning-threshold: ${CPU_WARNING_THRESHOLD:80.0}
+

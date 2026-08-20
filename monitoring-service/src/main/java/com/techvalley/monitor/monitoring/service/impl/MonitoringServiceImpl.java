@@ -11,6 +11,7 @@ import com.techvalley.monitor.monitoring.mapper.MonitoringMapper;
 import com.techvalley.monitor.monitoring.service.MonitoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -30,8 +31,11 @@ public class MonitoringServiceImpl implements MonitoringService {
     private final WebClient clientServiceClient;
     private final MonitoringMapper monitoringMapper;
 
-    private static final Float CPU_WARNING_THRESHOLD = 80.0f;
-    private static final int LONG_STOPPED_HOURS = 48;
+    @Value("${monitoring.cpu-warning-threshold:80.0}")
+    private Float cpuWarningThreshold;
+
+    @Value("${monitoring.long-stopped-hours:48}")
+    private int longStoppedHours;
 
     private UserContextInfo validateAndGetUserContext() {
         UserContextInfo user = UserContext.get();
@@ -80,7 +84,7 @@ public class MonitoringServiceImpl implements MonitoringService {
                 "Tải CPU cao bất thường: " + i.getCpuUsage() + "%"));
 
         return instances.stream()
-                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: CPU usage >= 80%"))
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: CPU usage >= " + cpuWarningThreshold.intValue() + "%"))
                 .toList();
     }
 
@@ -100,7 +104,7 @@ public class MonitoringServiceImpl implements MonitoringService {
 
     @Override
     public List<MonitoringInstanceResponse> getLongStopped() {
-        LocalDateTime threshold = LocalDateTime.now().minusHours(LONG_STOPPED_HOURS);
+        LocalDateTime threshold = LocalDateTime.now().minusHours(longStoppedHours);
         List<Long> managedClientIds = getManagedClientIdsIfManager();
         if (managedClientIds != null && managedClientIds.isEmpty()) return Collections.emptyList();
 
@@ -113,10 +117,10 @@ public class MonitoringServiceImpl implements MonitoringService {
                 .toList();
 
         longStopped.forEach(i -> createAlertIfAbsent(i.getId(), "LONG_STOPPED",
-                "Cảnh báo: Máy chủ ngưng hoạt động kéo dài quá 48 giờ"));
+                "Cảnh báo: Máy chủ ngưng hoạt động kéo dài quá " + longStoppedHours + " giờ"));
 
         return longStopped.stream()
-                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: Máy chủ bị tạm dừng ít nhất 48 giờ"))
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: Máy chủ bị tạm dừng ít nhất " + longStoppedHours + " giờ"))
                 .toList();
     }
 

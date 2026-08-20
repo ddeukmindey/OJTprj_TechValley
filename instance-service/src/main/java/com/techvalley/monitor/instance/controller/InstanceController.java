@@ -77,8 +77,8 @@ public class InstanceController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Xoá instance", description = "Chỉ cho phép xoá instance ở trạng thái STOPPED hoặc ERROR. " +
             "Instance đang RUNNING sẽ bị chặn xoá (ActiveInstanceException, HTTP 409).")
-    public ResponseEntity<ApiResponse<Object>> deleteInstance(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteInstance(@PathVariable Long id) {
         instanceService.deleteInstance(id);
-        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Xóa thành công", null));
+        return ResponseEntity.noContent().build();
     }
 }

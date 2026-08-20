@@ -23,3 +23,8 @@ jwt:
   secret: 3DqK8sXv2NfL9pWa5RmTy7HuBcEeGhJk
 internal:
   api-key: ${INTERNAL_API_KEY:changeme-internal-key-please-override}
+
+monitoring:
+  cpu-warning-threshold: ${CPU_WARNING_THRESHOLD:80.0}
+  long-stopped-hours: ${LONG_STOPPED_HOURS:48}
+

@@ -1,5 +1,6 @@
 package com.techvalley.monitor.client.service;
 
+import com.techvalley.monitor.client.dto.internal.ClientInternalDto;
 import com.techvalley.monitor.client.dto.request.ClientRequest;
 import com.techvalley.monitor.client.dto.response.*;
 import com.techvalley.monitor.client.dto.external.InstanceDto;
@@ -19,4 +20,10 @@ public interface ClientService {
     ClientCostForecastResponse getClientCostForecast(Long id);
 
     ClientSlaResponse getClientSla(Long id);
+
+    // ── Internal methods ──────────────────────────────────────────────────────
+
+    List<ClientInternalDto> getClientsByManager(Long managerId);
+
+    long countClients();
 }

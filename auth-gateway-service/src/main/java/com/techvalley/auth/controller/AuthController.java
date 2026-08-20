@@ -1,9 +1,9 @@
 package com.techvalley.auth.controller;
 
 import com.techvalley.auth.dto.request.LoginRequest;
-import com.techvalley.auth.dto.response.ApiResponse;
 import com.techvalley.auth.dto.response.LoginResponse;
 import com.techvalley.auth.service.AuthService;
+import com.techvalley.common.dto.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,9 +25,10 @@ public class AuthController {
         return ResponseEntity.ok(
                 ApiResponse.<LoginResponse>builder()
                         .success(true)
+                        .code(200)
                         .message("Login successful")
                         .data(response)
                         .build()
         );
     }
-}
+}

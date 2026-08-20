@@ -4,6 +4,7 @@ import com.techvalley.common.dto.PageMeta;
 import com.techvalley.common.dto.PageResponse;
 import com.techvalley.monitor.enums.InstanceStatus;
 import com.techvalley.monitor.instance.Instance;
+import com.techvalley.monitor.instance.dto.internal.InstanceInternalDto;
 import com.techvalley.monitor.instance.dto.request.InstanceRequest;
 import com.techvalley.monitor.instance.dto.request.InstanceStatusUpdateRequest;
 import com.techvalley.monitor.instance.dto.response.InstanceResponse;
@@ -24,6 +25,7 @@ import com.techvalley.common.security.UserContextInfo;
 import com.techvalley.monitor.instance.dto.internal.ClientDto;
 import com.techvalley.monitor.instance.exception.AccessDeniedException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,117 +34,167 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InstanceServiceImpl implements InstanceService {
 
-    private final InstanceRepository instanceRepository;
-    private final InstanceMapper instanceMapper;
-    @Qualifier("clientServiceClient")
-    private final WebClient clientServiceClient;
+  private final InstanceRepository instanceRepository;
+  private final InstanceMapper instanceMapper;
+  @Qualifier("clientServiceClient")
+  private final WebClient clientServiceClient;
 
+  @Value("${instance.cpu-warning-threshold:80.0}")
+  private Float cpuWarningThreshold;
 
-    private List<Long> getManagedClientIdsIfManager() {
-        UserContextInfo user = UserContext.get();
-        if (user == null) {
-            throw new AccessDeniedException("Người dùng chưa được xác thực");
-        }
-        if ("CLIENT_MANAGER".equals(user.getRole())) {
-            List<ClientDto> clients = clientServiceClient.get()
-                    .uri("/internal/clients/by-manager/{managerId}", user.getMemberId())
-                    .retrieve()
-                    .bodyToFlux(ClientDto.class)
-                    .collectList()
-                    .block();
-            return clients != null ? clients.stream().map(ClientDto::getId).collect(Collectors.toList()) : List.of();
-        }
-        return null; // null nghĩa là ADMIN, không giới hạn
+  private List<Long> getManagedClientIdsIfManager() {
+    UserContextInfo user = UserContext.get();
+    if (user == null) {
+      throw new AccessDeniedException("Người dùng chưa được xác thực");
+    }
+    if ("CLIENT_MANAGER".equals(user.getRole())) {
+      List<ClientDto> clients = clientServiceClient.get()
+          .uri("/internal/clients/by-manager/{managerId}", user.getMemberId())
+          .retrieve()
+          .bodyToFlux(ClientDto.class)
+          .collectList()
+          .block();
+      return clients != null ? clients.stream().map(ClientDto::getId).collect(Collectors.toList()) : List.of();
+    }
+    return null; // null nghĩa là ADMIN, không giới hạn
+  }
+
+  private void checkOwnership(Long instanceClientId) {
+    List<Long> managedIds = getManagedClientIdsIfManager();
+    if (managedIds != null && !managedIds.contains(instanceClientId)) {
+      throw new AccessDeniedException("Bạn không có quyền thao tác với instance của khách hàng này");
+    }
+  }
+
+  @Override
+  @Transactional
+  public InstanceResponse createInstance(InstanceRequest request) {
+    checkOwnership(request.getClientId());
+    Instance instance = instanceMapper.toEntity(request);
+    instance = instanceRepository.save(instance);
+    return instanceMapper.toResponse(instance);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, String region,
+      Pageable pageable) {
+    List<Long> managedIds = getManagedClientIdsIfManager();
+    if (managedIds != null) {
+      if (clientId != null && !managedIds.contains(clientId)) {
+        throw new AccessDeniedException("Bạn không có quyền xem instance của khách hàng này");
+      }
+      if (clientId == null && managedIds.isEmpty()) {
+        return new PageResponse<>(List.of(), PageMeta.builder()
+            .currentPage(1).pageSize(pageable.getPageSize())
+            .totalElements(0).totalPages(0).build());
+      }
     }
 
-    private void checkOwnership(Long instanceClientId) {
-        List<Long> managedIds = getManagedClientIdsIfManager();
-        if (managedIds != null && !managedIds.contains(instanceClientId)) {
-            throw new AccessDeniedException("Bạn không có quyền thao tác với instance của khách hàng này");
-        }
+    Specification<Instance> spec = Specification.where(InstanceSpecification.hasClientId(clientId))
+        .and(InstanceSpecification.hasStatus(status))
+        .and(InstanceSpecification.hasRegion(region));
+    if (managedIds != null && clientId == null) {
+      spec = spec.and(InstanceSpecification.hasClientIdIn(managedIds));
     }
 
-    @Override
-    @Transactional
-    public InstanceResponse createInstance(InstanceRequest request) {
-        checkOwnership(request.getClientId());
-        Instance instance = instanceMapper.toEntity(request);
-        instance = instanceRepository.save(instance);
-        return instanceMapper.toResponse(instance);
+    Page<Instance> instancePage = instanceRepository.findAll(spec, pageable);
+
+    List<InstanceResponse> responses = instancePage.getContent().stream()
+        .map(instanceMapper::toResponse)
+        .collect(Collectors.toList());
+
+    PageMeta pageMeta = PageMeta.builder()
+        .currentPage(instancePage.getNumber() + 1)
+        .pageSize(instancePage.getSize())
+        .totalElements(instancePage.getTotalElements())
+        .totalPages(instancePage.getTotalPages())
+        .build();
+
+    return new PageResponse<>(responses, pageMeta);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public InstanceResponse getInstanceById(Long id) {
+    Instance instance = instanceRepository.findById(id)
+        .orElseThrow(() -> new InstanceNotFoundException(id));
+    checkOwnership(instance.getClientId());
+    return instanceMapper.toResponse(instance);
+  }
+
+  @Override
+  @Transactional
+  public InstanceResponse updateInstanceStatus(Long id, InstanceStatusUpdateRequest request) {
+    Instance instance = instanceRepository.findById(id)
+        .orElseThrow(() -> new InstanceNotFoundException(id));
+
+    checkOwnership(instance.getClientId());
+
+    instance.setStatus(request.getStatus());
+    instance.setCpuUsage(request.getCpuUsage());
+
+    instance = instanceRepository.save(instance);
+    return instanceMapper.toResponse(instance);
+  }
+
+  @Override
+  @Transactional
+  public void deleteInstance(Long id) {
+    Instance instance = instanceRepository.findById(id)
+        .orElseThrow(() -> new InstanceNotFoundException(id));
+    checkOwnership(instance.getClientId());
+    if (InstanceStatus.RUNNING.equals(instance.getStatus())) {
+      throw new InvalidInstanceOperationException(
+          "Không thể xóa máy chủ đang ở trạng thái RUNNING. Vui lòng tắt máy chủ (STOPPED) trước khi xóa.");
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public PageResponse<InstanceResponse> getInstances(Long clientId, InstanceStatus status, String region, Pageable pageable) {
-        List<Long> managedIds = getManagedClientIdsIfManager();
-        if (managedIds != null) {
-            if (clientId != null && !managedIds.contains(clientId)) {
-                throw new AccessDeniedException("Bạn không có quyền xem instance của khách hàng này");
-            }
-            if (clientId == null && managedIds.isEmpty()) {
-                return new PageResponse<>(List.of(), PageMeta.builder()
-                        .currentPage(1).pageSize(pageable.getPageSize())
-                        .totalElements(0).totalPages(0).build());
-            }
-        }
+    instanceRepository.delete(instance);
+  }
 
-        Specification<Instance> spec = Specification.where(InstanceSpecification.hasClientId(clientId))
-                .and(InstanceSpecification.hasStatus(status))
-                .and(InstanceSpecification.hasRegion(region));
-        if (managedIds != null && clientId == null) {
-            spec = spec.and(InstanceSpecification.hasClientIdIn(managedIds));
-        }
+  // ── Internal methods ──────────────────────────────────────────────────────
 
-        Page<Instance> instancePage = instanceRepository.findAll(spec, pageable);
+  @Override
+  @Transactional(readOnly = true)
+  public List<InstanceInternalDto> getHighCpuInstances(List<Long> clientIds) {
+    List<Instance> result = (clientIds == null || clientIds.isEmpty())
+        ? instanceRepository.findByCpuUsageGreaterThanEqual(cpuWarningThreshold)
+        : instanceRepository.findByClientIdInAndCpuUsageGreaterThanEqual(clientIds, cpuWarningThreshold);
+    return result.stream().map(InstanceInternalDto::from).toList();
+  }
 
-        List<InstanceResponse> responses = instancePage.getContent().stream()
-                .map(instanceMapper::toResponse)
-                .collect(Collectors.toList());
+  @Override
+  @Transactional(readOnly = true)
+  public List<InstanceInternalDto> getErrorInstances(List<Long> clientIds) {
+    List<Instance> result = (clientIds == null || clientIds.isEmpty())
+        ? instanceRepository.findByStatus(InstanceStatus.ERROR)
+        : instanceRepository.findByClientIdInAndStatus(clientIds, InstanceStatus.ERROR);
+    return result.stream().map(InstanceInternalDto::from).toList();
+  }
 
-        PageMeta pageMeta = PageMeta.builder()
-                .currentPage(instancePage.getNumber() + 1)
-                .pageSize(instancePage.getSize())
-                .totalElements(instancePage.getTotalElements())
-                .totalPages(instancePage.getTotalPages())
-                .build();
+  @Override
+  @Transactional(readOnly = true)
+  public List<InstanceInternalDto> getStoppedInstances(List<Long> clientIds) {
+    List<Instance> result = (clientIds == null || clientIds.isEmpty())
+        ? instanceRepository.findByStatus(InstanceStatus.STOPPED)
+        : instanceRepository.findByClientIdInAndStatus(clientIds, InstanceStatus.STOPPED);
+    return result.stream().map(InstanceInternalDto::from).toList();
+  }
 
-        return new PageResponse<>(responses, pageMeta);
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<InstanceInternalDto> getAllInstances(List<Long> clientIds) {
+    List<Instance> result = (clientIds == null || clientIds.isEmpty())
+        ? instanceRepository.findAll()
+        : instanceRepository.findByClientIdIn(clientIds);
+    return result.stream().map(InstanceInternalDto::from).toList();
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public InstanceResponse getInstanceById(Long id) {
-        Instance instance = instanceRepository.findById(id)
-                .orElseThrow(() -> new InstanceNotFoundException(id));
-        checkOwnership(instance.getClientId());
-        return instanceMapper.toResponse(instance);
-    }
-
-    @Override
-    @Transactional
-    public InstanceResponse updateInstanceStatus(Long id, InstanceStatusUpdateRequest request) {
-        Instance instance = instanceRepository.findById(id)
-                .orElseThrow(() -> new InstanceNotFoundException(id));
-
-        checkOwnership(instance.getClientId());
-
-        instance.setStatus(request.getStatus());
-        instance.setCpuUsage(request.getCpuUsage());
-        
-        instance = instanceRepository.save(instance);
-        return instanceMapper.toResponse(instance);
-    }
-
-    @Override
-    @Transactional
-    public void deleteInstance(Long id) {
-        Instance instance = instanceRepository.findById(id)
-                .orElseThrow(() -> new InstanceNotFoundException(id));
-        checkOwnership(instance.getClientId());
-        if (InstanceStatus.RUNNING.equals(instance.getStatus())) {
-            throw new InvalidInstanceOperationException("Không thể xóa máy chủ đang ở trạng thái RUNNING. Vui lòng tắt máy chủ (STOPPED) trước khi xóa.");
-        }
-
-        instanceRepository.delete(instance);
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public InstanceInternalDto getInstanceInternalById(Long id) {
+    Instance instance = instanceRepository.findById(id)
+        .orElseThrow(() -> new InstanceNotFoundException(id));
+    return InstanceInternalDto.from(instance);
+  }
 }

@@ -1,59 +1,47 @@
 package com.techvalley.monitor.instance.controller;
 
-import com.techvalley.monitor.enums.InstanceStatus;
-import com.techvalley.monitor.instance.Instance;
 import com.techvalley.monitor.instance.dto.internal.InstanceInternalDto;
-import com.techvalley.monitor.instance.repository.InstanceRepository;
+import com.techvalley.monitor.instance.service.InstanceService;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Internal controller – chỉ nhận request từ các service nội bộ (qua X-Internal-Key).
+ * Toàn bộ business logic được ủy thác cho InstanceService.
+ */
 @RestController
 @RequestMapping("/internal/instances")
 @RequiredArgsConstructor
 @Hidden
 public class InstanceInternalController {
 
-    private final InstanceRepository instanceRepository;
-    private static final Float CPU_WARNING_THRESHOLD = 80.0f;
+    private final InstanceService instanceService;
 
     @GetMapping("/high-cpu")
     public List<InstanceInternalDto> getHighCpu(@RequestParam(required = false) List<Long> clientIds) {
-        List<Instance> result = (clientIds == null || clientIds.isEmpty())
-                ? instanceRepository.findByCpuUsageGreaterThanEqual(CPU_WARNING_THRESHOLD)
-                : instanceRepository.findByClientIdInAndCpuUsageGreaterThanEqual(clientIds, CPU_WARNING_THRESHOLD);
-        return result.stream().map(InstanceInternalDto::from).toList();
+        return instanceService.getHighCpuInstances(clientIds);
     }
 
     @GetMapping("/errors")
     public List<InstanceInternalDto> getErrors(@RequestParam(required = false) List<Long> clientIds) {
-        List<Instance> result = (clientIds == null || clientIds.isEmpty())
-                ? instanceRepository.findByStatus(InstanceStatus.ERROR)
-                : instanceRepository.findByClientIdInAndStatus(clientIds, InstanceStatus.ERROR);
-        return result.stream().map(InstanceInternalDto::from).toList();
+        return instanceService.getErrorInstances(clientIds);
     }
 
     @GetMapping("/stopped")
     public List<InstanceInternalDto> getStopped(@RequestParam(required = false) List<Long> clientIds) {
-        List<Instance> result = (clientIds == null || clientIds.isEmpty())
-                ? instanceRepository.findByStatus(InstanceStatus.STOPPED)
-                : instanceRepository.findByClientIdInAndStatus(clientIds, InstanceStatus.STOPPED);
-        return result.stream().map(InstanceInternalDto::from).toList();
+        return instanceService.getStoppedInstances(clientIds);
     }
 
     @GetMapping
     public List<InstanceInternalDto> getAll(@RequestParam(required = false) List<Long> clientIds) {
-        List<Instance> result = (clientIds == null || clientIds.isEmpty())
-                ? instanceRepository.findAll()
-                : instanceRepository.findByClientIdIn(clientIds);
-        return result.stream().map(InstanceInternalDto::from).toList();
+        return instanceService.getAllInstances(clientIds);
     }
+
     @GetMapping("/{id}")
     public InstanceInternalDto getById(@PathVariable Long id) {
-        Instance instance = instanceRepository.findById(id)
-                .orElseThrow(() -> new com.techvalley.monitor.instance.exception.InstanceNotFoundException(id));
-        return InstanceInternalDto.from(instance);
+        return instanceService.getInstanceInternalById(id);
     }
-}
+}

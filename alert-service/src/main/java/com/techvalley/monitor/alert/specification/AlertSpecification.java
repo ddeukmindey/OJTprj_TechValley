@@ -85,7 +85,10 @@ public final class AlertSpecification {
             if (fromDate != null) {
                 return cb.greaterThanOrEqualTo(root.get("detectedAt"), fromDate.atStartOfDay());
             }
-            return cb.lessThanOrEqualTo(root.get("detectedAt"), toDate.atTime(23, 59, 59));
+            if (toDate != null) {
+                return cb.lessThanOrEqualTo(root.get("detectedAt"), toDate.atTime(23, 59, 59));
+            }
+            return null;
         };
     }
 
