@@ -17,6 +17,9 @@ public class Alert {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK (bigint)
 
+    @Version
+    private Long version; // Optimistic Locking – chống 2 người resolve cùng 1 alert
+
     private Long instanceId; // FK tham chiếu tới instances.id
 
     @Enumerated(EnumType.STRING)

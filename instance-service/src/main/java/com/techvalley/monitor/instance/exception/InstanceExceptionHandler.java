@@ -3,6 +3,7 @@ package com.techvalley.monitor.instance.exception;
 import com.techvalley.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,6 +19,13 @@ public class InstanceExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleInstanceNotFound(InstanceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Object>> handleOptimisticLocking(ObjectOptimisticLockingFailureException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(HttpStatus.CONFLICT.value(),
+                        "Máy chủ ảo đã bị thay đổi bởi một yêu cầu khác. Vui lòng tải lại trang và thử lại!"));
     }
 
     @ExceptionHandler(InvalidInstanceOperationException.class)

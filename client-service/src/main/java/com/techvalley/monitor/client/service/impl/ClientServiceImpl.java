@@ -176,28 +176,61 @@ public class ClientServiceImpl implements ClientService {
     Client client = getClientAndValidateAccess(id);
     List<InstanceDto> instances = findInstancesByClientId(id);
 
-    double runningCost = 0.0;
-    double stoppedCost = 0.0;
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+    LocalDateTime endOfMonth = startOfMonth.plusMonths(1);
+    long totalDaysInMonth = ChronoUnit.DAYS.between(startOfMonth, endOfMonth);
+    String currentMonthStr = now.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+    double proratedRunningCost = 0.0;
+    double proratedStoppedCost = 0.0;
 
     for (InstanceDto inst : instances) {
-      double cost = inst.getMonthlyCost() != null ? inst.getMonthlyCost() : 0.0;
-      if (InstanceStatus.RUNNING.equals(inst.getStatus())) {
-        runningCost += cost;
+      // Xác định đơn giá theo loại instance (SMALL / MEDIUM / LARGE)
+      double unitPrice;
+      if (inst.getInstanceType() != null) {
+        unitPrice = switch (inst.getInstanceType()) {
+          case SMALL  -> 50.0;
+          case MEDIUM -> 120.0;
+          case LARGE  -> 250.0;
+        };
       } else {
-        stoppedCost += cost;
+        unitPrice = inst.getMonthlyCost() != null ? inst.getMonthlyCost() : 50.0;
+      }
+
+      // Tính thời điểm bắt đầu tính phí trong tháng này
+      LocalDateTime launch = inst.getLauncheAt() != null ? inst.getLauncheAt() : startOfMonth;
+      LocalDateTime activeStart = launch.isBefore(startOfMonth) ? startOfMonth : launch;
+
+      if (activeStart.isAfter(now)) continue; // instance tạo sau hiện tại → chưa tính
+
+      if (InstanceStatus.RUNNING.equals(inst.getStatus())) {
+        // Instance đang RUNNING: tính từ lúc bắt đầu đến hiện tại
+        double activeDays = (double) Duration.between(activeStart, now).toMinutes() / (24.0 * 60.0);
+        proratedRunningCost += unitPrice * (activeDays / totalDaysInMonth);
+      } else {
+        // Instance đã STOPPED/ERROR: tính từ lúc bắt đầu đến lúc dừng
+        LocalDateTime activeEnd = inst.getUpdateAt() != null ? inst.getUpdateAt() : now;
+        if (activeEnd.isBefore(activeStart)) activeEnd = activeStart;
+        if (activeEnd.isAfter(now)) activeEnd = now;
+        double activeDays = (double) Duration.between(activeStart, activeEnd).toMinutes() / (24.0 * 60.0);
+        proratedStoppedCost += unitPrice * (activeDays / totalDaysInMonth);
       }
     }
 
-    LocalDateTime now = LocalDateTime.now();
-    String currentMonthStr = now.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+    // Làm tròn 2 chữ số thập phân
+    proratedRunningCost  = Math.round(proratedRunningCost  * 100.0) / 100.0;
+    proratedStoppedCost  = Math.round(proratedStoppedCost  * 100.0) / 100.0;
 
     return ClientCostResponse.builder()
         .clientId(client.getId())
         .currentMonth(currentMonthStr)
+        .billingNote(String.format("Thanh toán theo thực dùng (%d ngày trong tháng %d ngày)",
+            (int) ChronoUnit.DAYS.between(startOfMonth, now), (int) totalDaysInMonth))
         .totalInstances(instances.size())
-        .runningCost(runningCost)
-        .stoppedCost(stoppedCost)
-        .totalMonthlyCost(runningCost + stoppedCost)
+        .runningCost(proratedRunningCost)
+        .stoppedCost(proratedStoppedCost)
+        .totalMonthlyCost(Math.round((proratedRunningCost + proratedStoppedCost) * 100.0) / 100.0)
         .build();
   }
 

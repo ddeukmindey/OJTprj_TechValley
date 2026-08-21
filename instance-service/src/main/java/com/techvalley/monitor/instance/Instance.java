@@ -18,6 +18,9 @@ public class Instance {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK (bigint)
 
+    @Version
+    private Long version; // Optimistic Locking – tự tăng mỗi lần update, chống race condition
+
     private String instanceName;
     private String region;
 

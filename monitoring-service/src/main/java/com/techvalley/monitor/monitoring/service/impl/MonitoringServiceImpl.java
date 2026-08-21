@@ -10,15 +10,18 @@ import com.techvalley.monitor.monitoring.dto.response.MonitoringReportResponse;
 import com.techvalley.monitor.monitoring.mapper.MonitoringMapper;
 import com.techvalley.monitor.monitoring.service.MonitoringService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MonitoringServiceImpl implements MonitoringService {
@@ -36,6 +39,8 @@ public class MonitoringServiceImpl implements MonitoringService {
 
     @Value("${monitoring.long-stopped-hours:48}")
     private int longStoppedHours;
+
+    // ── Authentication helpers ────────────────────────────────────────────────
 
     private UserContextInfo validateAndGetUserContext() {
         UserContextInfo user = UserContext.get();
@@ -58,10 +63,10 @@ public class MonitoringServiceImpl implements MonitoringService {
                     .block();
             return clients.stream().map(ClientDto::getId).toList();
         }
-        return null;
+        return null; // ADMIN → không lọc theo manager
     }
 
-    private List<InstanceDto> fetchInstances(String path, List<Long> clientIds, Object... extraParams) {
+    private List<InstanceDto> fetchInstances(String path, List<Long> clientIds) {
         return instanceServiceClient.get()
                 .uri(uriBuilder -> {
                     var b = uriBuilder.path(path);
@@ -74,6 +79,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                 .block();
     }
 
+    // ── Public endpoints ──────────────────────────────────────────────────────
+
     @Override
     public List<MonitoringInstanceResponse> getWarnings() {
         List<Long> managedClientIds = getManagedClientIdsIfManager();
@@ -84,7 +91,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                 "Tải CPU cao bất thường: " + i.getCpuUsage() + "%"));
 
         return instances.stream()
-                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: CPU usage >= " + cpuWarningThreshold.intValue() + "%"))
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(
+                        i, "Cảnh báo: CPU usage >= " + cpuWarningThreshold.intValue() + "%"))
                 .toList();
     }
 
@@ -98,7 +106,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                 "Sự cố máy chủ: Instance đang ở trạng thái ERROR"));
 
         return instances.stream()
-                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Lỗi: Máy chủ đang gặp sự cố (ERROR)"))
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(
+                        i, "Lỗi: Máy chủ đang gặp sự cố (ERROR)"))
                 .toList();
     }
 
@@ -120,7 +129,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                 "Cảnh báo: Máy chủ ngưng hoạt động kéo dài quá " + longStoppedHours + " giờ"));
 
         return longStopped.stream()
-                .map(i -> monitoringMapper.toMonitoringInstanceResponse(i, "Cảnh báo: Máy chủ bị tạm dừng ít nhất " + longStoppedHours + " giờ"))
+                .map(i -> monitoringMapper.toMonitoringInstanceResponse(
+                        i, "Cảnh báo: Máy chủ bị tạm dừng ít nhất " + longStoppedHours + " giờ"))
                 .toList();
     }
 
@@ -134,44 +144,72 @@ public class MonitoringServiceImpl implements MonitoringService {
                     .unresolvedAlerts(0).totalClients(0).build();
         }
 
+        // ── Bước 1: Lấy danh sách instance (phải xong trước để có instanceIds) ──
         List<InstanceDto> targetInstances = fetchInstances("/internal/instances", managedClientIds);
 
-        long totalCount = targetInstances.size();
-        long runningCount = targetInstances.stream().filter(i -> "RUNNING".equals(i.getStatus())).count();
-        long stoppedCount = targetInstances.stream().filter(i -> "STOPPED".equals(i.getStatus())).count();
-        long errorCount = targetInstances.stream().filter(i -> "ERROR".equals(i.getStatus())).count();
-
+        long totalCount    = targetInstances.size();
+        long runningCount  = targetInstances.stream().filter(i -> "RUNNING".equals(i.getStatus())).count();
+        long stoppedCount  = targetInstances.stream().filter(i -> "STOPPED".equals(i.getStatus())).count();
+        long errorCount    = targetInstances.stream().filter(i -> "ERROR".equals(i.getStatus())).count();
         List<Long> instanceIds = targetInstances.stream().map(InstanceDto::getId).toList();
-        long unresolvedAlerts = instanceIds.isEmpty() ? 0 : alertServiceClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/internal/alerts/count-unresolved")
-                        .queryParam("instanceIds", instanceIds).build())
-                .retrieve()
-                .bodyToMono(Long.class)
-                .block();
-
-        long totalClients = managedClientIds != null ? managedClientIds.size()
-                : clientServiceClient.get().uri("/internal/clients/count")
-                    .retrieve().bodyToMono(Long.class).block();
 
         double avgCpu = targetInstances.stream()
                 .filter(i -> i.getCpuUsage() != null)
                 .mapToDouble(InstanceDto::getCpuUsage)
                 .average().orElse(0.0);
 
+        // ── Bước 2: Gọi song song alert count + client count (độc lập nhau) ──
+        Mono<Long> unresolvedAlertsMono = instanceIds.isEmpty()
+                ? Mono.just(0L)
+                : alertServiceClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/internal/alerts/count-unresolved")
+                                .queryParam("instanceIds", instanceIds)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(Long.class)
+                        .onErrorReturn(0L);  // alert-service down → fallback 0, không crash report
+
+        Mono<Long> totalClientsMono = managedClientIds != null
+                ? Mono.just((long) managedClientIds.size())
+                : clientServiceClient.get()
+                        .uri("/internal/clients/count")
+                        .retrieve()
+                        .bodyToMono(Long.class)
+                        .onErrorReturn(0L); // client-service down → fallback 0
+
+        // Mono.zip chạy cả 2 Mono song song, chờ cả 2 hoàn thành
+        var counts = Mono.zip(unresolvedAlertsMono, totalClientsMono).block();
+
         return MonitoringReportResponse.builder()
-                .totalInstances(totalCount).runningInstances(runningCount)
-                .stoppedInstances(stoppedCount).errorInstances(errorCount)
+                .totalInstances(totalCount)
+                .runningInstances(runningCount)
+                .stoppedInstances(stoppedCount)
+                .errorInstances(errorCount)
                 .averageCpuUsage(Math.round(avgCpu * 100.0) / 100.0)
-                .unresolvedAlerts(unresolvedAlerts).totalClients(totalClients)
+                .unresolvedAlerts(counts.getT1())
+                .totalClients(counts.getT2())
                 .build();
     }
 
+    // ── Internal helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Ghi nhận alert theo kiểu fire-and-forget.
+     * Nếu alert-service không phản hồi hoặc trả lỗi:
+     *   - Ghi log warning (không mất trace)
+     *   - Không ném exception ra ngoài → endpoint /warnings, /errors vẫn trả response bình thường
+     */
     private void createAlertIfAbsent(Long instanceId, String type, String message) {
         alertServiceClient.post()
                 .uri("/internal/alerts")
                 .bodyValue(new CreateAlertRequest(instanceId, type, message))
                 .retrieve()
                 .toBodilessEntity()
-                .block();
+                .doOnError(e -> log.warn(
+                        "[MonitoringService] Không thể ghi nhận alert {} cho instance {}: {}",
+                        type, instanceId, e.getMessage()))
+                .onErrorComplete()  // nuốt lỗi, không propagate lên caller
+                .subscribe();       // fire-and-forget: không block calling thread
     }
 }
