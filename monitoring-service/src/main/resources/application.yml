@@ -27,4 +27,9 @@ internal:
 monitoring:
   cpu-warning-threshold: ${CPU_WARNING_THRESHOLD:80.0}
   long-stopped-hours: ${LONG_STOPPED_HOURS:48}
+  scheduler:
+    # true: bật Cron Job tự động quét (container PRIMARY)
+    # false: tắt khi scale-out nhiều container (container phụ không cần chạy cron)
+    enabled: ${MONITORING_SCHEDULER_ENABLED:true}
+    cron: ${MONITORING_SCHEDULER_CRON:0 */5 * * * *}
 

@@ -14,4 +14,10 @@ public interface MonitoringService {
     List<MonitoringInstanceResponse> getLongStopped();
 
     MonitoringReportResponse getOverviewReport();
+
+    /**
+     * System-level scan: quét toàn bộ hạ tầng, tự động tạo alert mà không cần user trigger.
+     * Không dùng UserContext / RBAC — được gọi bởi MonitoringScheduler.
+     */
+    void scanAndCreateAlerts();
 }

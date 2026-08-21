@@ -212,4 +212,68 @@ public class MonitoringServiceImpl implements MonitoringService {
                 .onErrorComplete()  // nuốt lỗi, không propagate lên caller
                 .subscribe();       // fire-and-forget: không block calling thread
     }
+
+    // ── System-level scan (dùng cho Scheduler) ───────────────────────────────
+
+    /**
+     * Quét toàn bộ hạ tầng và tạo alert nếu cần.
+     * Không dùng UserContext / RBAC — chạy với quyền hệ thống.
+     * Được gọi bởi MonitoringScheduler mỗi 5 phút.
+     */
+    @Override
+    public void scanAndCreateAlerts() {
+        log.info("[Scheduler] Bắt đầu quét tự động sức khỏe hệ thống...");
+        int alertCount = 0;
+
+        // ── 1. CPU HIGH: instance đang RUNNING có CPU >= threshold ──
+        try {
+            List<InstanceDto> highCpuInstances = fetchInstances("/internal/instances/high-cpu", null);
+            for (InstanceDto inst : highCpuInstances) {
+                createAlertIfAbsent(inst.getId(), "CPU_HIGH",
+                        String.format("Tải CPU cao bất thường: %.1f%% (ngưỡng: %.0f%%)",
+                                inst.getCpuUsage() != null ? inst.getCpuUsage() : 0f,
+                                cpuWarningThreshold));
+                alertCount++;
+            }
+            log.info("[Scheduler] CPU_HIGH: phát hiện {} instance", highCpuInstances.size());
+        } catch (Exception e) {
+            log.warn("[Scheduler] Không thể quét CPU_HIGH: {}", e.getMessage());
+        }
+
+        // ── 2. ERROR: instance đang ở trạng thái ERROR ──
+        try {
+            List<InstanceDto> errorInstances = fetchInstances("/internal/instances/errors", null);
+            for (InstanceDto inst : errorInstances) {
+                createAlertIfAbsent(inst.getId(), "ERROR_DETECTED",
+                        "Sự cố máy chủ: Instance đang ở trạng thái ERROR");
+                alertCount++;
+            }
+            log.info("[Scheduler] ERROR_DETECTED: phát hiện {} instance", errorInstances.size());
+        } catch (Exception e) {
+            log.warn("[Scheduler] Không thể quét ERROR: {}", e.getMessage());
+        }
+
+        // ── 3. LONG_STOPPED: instance STOPPED quá longStoppedHours giờ ──
+        try {
+            LocalDateTime threshold = LocalDateTime.now().minusHours(longStoppedHours);
+            List<InstanceDto> stoppedInstances = fetchInstances("/internal/instances/stopped", null);
+            List<InstanceDto> longStopped = stoppedInstances.stream()
+                    .filter(i -> {
+                        LocalDateTime checkTime = i.getUpdateAt() != null ? i.getUpdateAt() : i.getLauncheAt();
+                        return checkTime != null && checkTime.isBefore(threshold);
+                    })
+                    .toList();
+
+            for (InstanceDto inst : longStopped) {
+                createAlertIfAbsent(inst.getId(), "LONG_STOPPED",
+                        String.format("Máy chủ ngưng hoạt động kéo dài quá %d giờ", longStoppedHours));
+                alertCount++;
+            }
+            log.info("[Scheduler] LONG_STOPPED: phát hiện {} instance", longStopped.size());
+        } catch (Exception e) {
+            log.warn("[Scheduler] Không thể quét LONG_STOPPED: {}", e.getMessage());
+        }
+
+        log.info("[Scheduler] Hoàn tất quét tự động. Gửi {} yêu cầu tạo alert.", alertCount);
+    }
 }
