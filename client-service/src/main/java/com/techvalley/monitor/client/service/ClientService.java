@@ -4,6 +4,7 @@ import com.techvalley.monitor.client.dto.internal.ClientInternalDto;
 import com.techvalley.monitor.client.dto.request.ClientRequest;
 import com.techvalley.monitor.client.dto.response.*;
 import com.techvalley.monitor.client.dto.external.InstanceDto;
+import org.springframework.lang.NonNull;
 
 import java.util.List;
 
@@ -13,13 +14,13 @@ public interface ClientService {
 
     PageResponse<ClientResponse> getClients(int page, int size, String search);
 
-    List<InstanceDto> getClientInstances(Long id);
+    List<InstanceDto> getClientInstances(@NonNull Long id);
 
-    ClientCostResponse getClientCost(Long id);
+    ClientCostResponse getClientCost(@NonNull Long id);
 
-    ClientCostForecastResponse getClientCostForecast(Long id);
+    ClientCostForecastResponse getClientCostForecast(@NonNull Long id);
 
-    ClientSlaResponse getClientSla(Long id);
+    ClientSlaResponse getClientSla(@NonNull Long id);
 
     // ── Internal methods ──────────────────────────────────────────────────────
 
