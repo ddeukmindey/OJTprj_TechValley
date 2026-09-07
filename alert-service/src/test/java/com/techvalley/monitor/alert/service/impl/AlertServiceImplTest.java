@@ -67,7 +67,7 @@ class AlertServiceImplTest {
     @Test
     @DisplayName("getAlerts as ADMIN should return paged alerts")
     void getAlerts_adminSuccess() {
-        Alert alert = new Alert(10L, 100L, AlertType.CPU_HIGH, "High CPU", 0, LocalDateTime.now(), null);
+        Alert alert = new Alert(10L, null, 100L, AlertType.CPU_HIGH, "High CPU", 0, LocalDateTime.now(), null);
         Page<Alert> page = new PageImpl<>(List.of(alert));
 
         when(alertRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
@@ -84,7 +84,7 @@ class AlertServiceImplTest {
     @Test
     @DisplayName("resolveAlert should resolve unresolved alert when permitted")
     void resolveAlert_success() {
-        Alert alert = new Alert(10L, 100L, AlertType.CPU_HIGH, "High CPU", 0, LocalDateTime.now(), null);
+        Alert alert = new Alert(10L, null, 100L, AlertType.CPU_HIGH, "High CPU", 0, LocalDateTime.now(), null);
         when(alertRepository.findById(10L)).thenReturn(Optional.of(alert));
         when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -107,7 +107,7 @@ class AlertServiceImplTest {
     @Test
     @DisplayName("resolveAlert should throw AlertAlreadyResolvedException when alert is already resolved")
     void resolveAlert_alreadyResolved() {
-        Alert alert = new Alert(10L, 100L, AlertType.CPU_HIGH, "High CPU", 1, LocalDateTime.now(), LocalDateTime.now());
+        Alert alert = new Alert(10L, null, 100L, AlertType.CPU_HIGH, "High CPU", 1, LocalDateTime.now(), LocalDateTime.now());
         when(alertRepository.findById(10L)).thenReturn(Optional.of(alert));
 
         assertThrows(AlertAlreadyResolvedException.class, () -> alertService.resolveAlert(10L));
@@ -129,7 +129,7 @@ class AlertServiceImplTest {
     @DisplayName("createAlertIfAbsent should skip if unresolved alert already exists")
     void createAlertIfAbsent_alreadyExists() {
         CreateAlertInternalRequest request = new CreateAlertInternalRequest(100L, "CPU_HIGH", "High CPU usage");
-        Alert existing = new Alert(1L, 100L, AlertType.CPU_HIGH, "High CPU", 0, LocalDateTime.now(), null);
+        Alert existing = new Alert(1L, null, 100L, AlertType.CPU_HIGH, "High CPU", 0, LocalDateTime.now(), null);
         when(alertRepository.findFirstByInstanceIdAndAlertTypeAndIsResolved(100L, AlertType.CPU_HIGH, 0))
                 .thenReturn(Optional.of(existing));
 
